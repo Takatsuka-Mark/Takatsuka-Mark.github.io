@@ -1,1 +1,85 @@
-Hello World
+<!DOCTYPE html>
+<html>
+<title>Mark Takatsuka</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+<link rel="stylesheet" href="default.css">
+<link rel="stylesheet" href="w3.css">
+
+<style>
+    body {font-family: "Lato", sans-serif;}
+    body, html{
+        height: 100%;
+        color: #777;
+        line-height: 1.8;
+    }
+    .wide {letter-spacing: 10px}
+    .hover-opacity {cursor: pointer;}
+
+    .paralax-image-home .paralax-image-projects{
+        background-attachment: fixed;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    .paralax-image-home{
+        background-image: url("./images/skyline/forest-mountains-fog-clouds-9754.jpg");
+        min-height: 100%;
+        /*min-height: 400px;*/
+    }
+
+    .paralax-image-projects{
+        background-image: url("./images/skyline/rocky-mountain-671658.jpg");
+        min-height: 100%;
+        /*min-height: 400px;*/
+    }
+
+</style>
+<body>
+
+<!--Navigation-->
+<div class="w3-top">
+    <div class="w3-bar" id="NavBar">
+        <a href="#about" class="w3-bar-item w3-button">ABOUT</a>
+        <a href="#projects" class="w3-bar-item w3-button">PROJECTS</a>
+        <a href="#contact" class="w3-bar-item w3-button">CONTACT</a>
+    </div>
+</div>
+
+<div class="paralax-image-home w3-display-container w3-opacity-min" id="home">
+</div>
+<div class="content container padding-64" id="about">
+    <p>about section</p>
+</div>
+
+<div class="paralax-image-projects w3-display-container w3-opacity-min">
+</div>
+<div class="content container padding-64" id="projects">
+    <p>projects section</p>
+</div>
+
+<div class="content container padding-64" id="contact">
+    <p>contact section</p>
+</div>
+
+
+<script>
+
+    window.onscroll = function () {navbarScrollFunction()};
+
+    function navbarScrollFunction(){
+        var navbar = document.getElementById("NavBar");
+        if(document.body.scrollTop > 100 || document.documentElement.scrollTop > 100){
+            navbar.className = "w3-bar" + "w3-card" + "w3-animate-top" + "w3-white";
+        }
+        else{
+            navbar.className = navbar.className.replace(" w3-card w3-animate w3-white", "");
+        }
+    }
+</script>
+
+
+</body>
+</html>
