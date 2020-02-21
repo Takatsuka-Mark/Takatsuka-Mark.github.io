@@ -1,3 +1,12 @@
 .bar{width:100%;overflow:hidden}.w3-center .w3-bar{display:inline-block;width:auto}
 .bar .bar-item{padding:8px 16px;float:left;width:auto;border:none;display:block;outline:0}
-.top,.bottom{position:fixed;width:100%;z-index:1}.w3-top{top:0}.w3-bottom{bottom:0}
+.top, .bottom{position:fixed;width:100%;z-index:1}.top{top:0}.bottom{bottom:0}
+
+/*coloring*/
+.white{color: #ffffff}
+
+/*sectioning*/
+.half-section{width: 50.0%}
+.third-section{width: 33.33333%}
+.quarter-section{width: 25.0%}
+.fifth-section{width: 20.0%}
