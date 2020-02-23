@@ -2,11 +2,14 @@
 .bar .bar-item{padding:8px 16px;float:left;width:auto;border:none;display:block;outline:0}
 .top, .bottom{position:fixed;width:100%;z-index:1}.top{top:0}.bottom{bottom:0}
 
+/*fonts*/
+.text-extra-large{font-size:36px!important;}
+
 /*coloring*/
-.white{color: #ffffff}
+.color-white{color: #ffffff}
 
 /*sectioning*/
-.half-section{width: 50.0%}
-.third-section{width: 33.33333%}
-.quarter-section{width: 25.0%}
-.fifth-section{width: 20.0%}
+.section-half{width: 50.0%}
+.section-third{width: 33.33333%}
+.section-quarter{width: 25.0%}
+.section-fifth{width: 20.0%}
