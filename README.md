@@ -1,6 +1,24 @@
-# Takatsuka-Mark.github.io
+# frontend
 
-### Depricated Public Website!
+## Project setup
+```
+npm install
+```
 
-The new webiste is under construction, and will be hosted by AWS at [MarkTakatsuka.com](https://MarkTakatsuka.com).
-This repo will be deleted or repurposed once the new website is up!
+### Compiles and hot-reloads for development
+```
+npm run serve
+```
+
+### Compiles and minifies for production
+```
+npm run build
+```
+
+### Lints and fixes files
+```
+npm run lint
+```
+
+### Customize configuration
+See [Configuration Reference](https://cli.vuejs.org/config/).
