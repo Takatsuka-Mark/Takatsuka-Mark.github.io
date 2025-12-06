@@ -1,44 +1,37 @@
-<template>
-  <b-navbar toggleable="md" class="app-header d-print-none">
-    <b-navbar-nav class="navbar-nav-mobile ml-auto">
-      <b-nav-item class="d-md-none" @click="switchSidebarMethod">
-        <i class="la la-navicon px-2"/>
-      </b-nav-item>
-    </b-navbar-nav>
-  </b-navbar>
-</template>
-
-<script>
-import { mapState, mapActions } from 'vuex';
-
-export default {
-  name: 'Header',
-  data() {
-    return {
-      showNavbarAlert: true,
-    };
-  },
-  computed: {
-    ...mapState('layout', {
-      sidebarClose: (state) => state.sidebarClose,
-      sidebarStatic: (state) => state.sidebarStatic,
-    }),
-  },
-  methods: {
-    ...mapActions('layout', ['toggleSidebar', 'switchSidebar', 'changeSidebarActive']),
-    switchSidebarMethod() {
-      if (!this.sidebarClose) {
-        this.switchSidebar(true);
-        this.changeSidebarActive(null);
-      } else {
-        this.switchSidebar(false);
-        const paths = this.$route.fullPath.split('/');
-        paths.pop();
-        this.changeSidebarActive(paths.join('/'));
-      }
-    },
-  },
-};
+<script setup lang="ts">
+import InitialsSVG from '../InitialsSVG/InitialsSVG.vue';
 </script>
+
+<template>
+  <div>
+    <div class="app-header">
+      <ul class="app-header-nav">
+        <li class="logo-li">
+          <InitialsSVG id="logo"/>
+        </li>
+        <li class="routes">
+          <router-link to="/" class="router-link">
+            <h2 class="route-text"><b>Home</b></h2>
+          </router-link>
+        </li>
+      </ul>
+        <!-- TODO reimplement hamburger when more pages are added -->
+  <!--      <button class="menu" v-bind:class="[hamburgerIsActive? 'opened': null]"-->
+  <!--              v-on:click="toggleHamburger">-->
+  <!--        <svg id="hamburger" width="50" height="50" viewBox="0 0 100 100">-->
+  <!--          <path class="line line1" d="M 20,29.000046 H 80.000231 C 80.000231,29.000046-->
+  <!--          94.498839,28.817352 94.532987,66.711331 94.543142,77.980673 90.966081,81.670246-->
+  <!--          85.259173,81.668997 79.552261,81.667751 75.000211,74.999942 75.000211,74.999942-->
+  <!--          L 25.000021,25.000058"/>-->
+  <!--          <path class="line line2" d="M 20,50 H 80"/>-->
+  <!--          <path class="line line3" d="M 20,70.999954 H 80.000231 C 80.000231,70.999954-->
+  <!--          94.498839,71.182648 94.532987,33.288669 94.543142,22.019327 90.966081,18.329754-->
+  <!--          85.259173,18.331003 79.552261,18.332249 75.000211,25.000058 75.000211,25.000058-->
+  <!--          L 25.000021,74.999942"/>-->
+  <!--        </svg>-->
+  <!--      </button>-->
+    </div>
+  </div>
+</template>
 
 <style src="./Header.scss" lang="scss" />

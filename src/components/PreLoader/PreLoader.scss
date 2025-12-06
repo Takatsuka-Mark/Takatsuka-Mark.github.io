@@ -1,0 +1,47 @@
+@import '../../styles/theme';
+
+#preloader {
+  position: absolute;
+  top: 50vh;
+  left: 50vw;
+  transform: translate(-50%, -50%);
+
+  stroke: $theme-0;
+  stroke-width: 7;
+  // name, duration, timing, delay
+  animation: fill 0.5s ease forwards $logo_trace_in, fade-logo-out $logo_fade_out ease forwards $logo_trace_in + $logo_show_time;
+}
+
+#preloader path:nth-child(1) {
+  stroke-dasharray: 801;
+  stroke-dashoffset: 801;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: logo-anim $logo_trace_in ease forwards;
+}
+
+#preloader path:nth-child(2) {
+  stroke-dasharray: 364;
+  stroke-dashoffset: 364;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: logo-anim $logo_trace_in ease forwards;
+}
+
+@keyframes logo-anim {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fill {
+  from {
+    fill: transparent;
+  }
+  to {
+    fill: $theme-0;
+  }
+}
+@keyframes fade-logo-out {
+  from {opacity: 1;}
+  to {opacity: 0;}
+}
