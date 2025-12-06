@@ -1,28 +1,18 @@
 # Website Frontend
-Hosted at [MarkTakatsuka.com](https://www.marktakatsuka.com)
 
-### Deployment Steps
-1. `npm run build`
-1. `gcloud app deploy`
+Hosted at [MarkTakatsuka.com](https://www.marktakatsuka.com) (via GitHub Pages)
 
-## Recommended IDE Setup
+## Deployment
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+### Automatic Deployment
+This repository is configured with GitHub Actions. Pushing to the `main` branch will automatically build and deploy the static site to the `gh-pages` branch.
 
-## Type Support for `.vue` Imports in TS
+### Manual Deployment
+To manually deploy to GitHub Pages:
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
-
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-    1) Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+```sh
+npm run deploy
+```
 
 ## Project Setup
 
@@ -36,11 +26,15 @@ npm install
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### Build for Production (SSG)
+
+This project uses `vite-ssg` to generate static HTML pages.
 
 ```sh
 npm run build
 ```
+
+The output will be in the `dist/` directory.
 
 ### Lint with [ESLint](https://eslint.org/)
 
@@ -48,7 +42,16 @@ npm run build
 npm run lint
 ```
 
-### Formatting?
+### Format
+
 ```sh
 npm run format
 ```
+
+## Recommended IDE Setup
+
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+
+## Type Support for `.vue` Imports in TS
+
+TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
