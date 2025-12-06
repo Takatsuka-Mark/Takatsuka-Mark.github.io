@@ -15,11 +15,6 @@ export const routes = [
     path: '/:catchAll(.*)',
     name: 'Error',
     component: Error404View
-  },
-  {
-    path: '/404',
-    name: 'NotFound',
-    component: Error404View
   }
 ]
 
