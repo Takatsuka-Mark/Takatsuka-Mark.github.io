@@ -20,9 +20,13 @@ import Container from '@/components/Container/Container.vue';
           Employment
         </template>
         <template v-slot:ht_body>
+          <h2><b>Cognitiv</b></h2>
+          <h3>Software Engineer</h3>  <!-- Include promotions? -->
+          <h4>Nov. 2023 - Current</h4>
+          <br>
           <h2><b>IBM</b></h2>
           <h3>DevOps - Software Engineer</h3>
-          <h4>Mar. 2022 - Current</h4>
+          <h4>Mar. 2022 - Sept 2023</h4>
           <br>
           <h2><b>IBM</b></h2>
           <h3>DevOps Intern</h3>
