@@ -1,6 +1,6 @@
 # Website Frontend
 
-Hosted at [MarkTakatsuka.com](https://www.marktakatsuka.com) (via GitHub Pages)
+Hosted at [mark.takatsuka.dev](https://mark.takatsuka.dev) (via GitHub Pages)
 
 ## Deployment
 
