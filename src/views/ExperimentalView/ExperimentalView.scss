@@ -1,0 +1,146 @@
+@import '../../styles/theme';
+
+.experimental-container {
+    width: 100vw;
+    height: 100vh;
+    // Background handled by Three.js
+    overflow: hidden;
+    position: relative;
+
+    /* Ensure no scrollbars/margins leak (double safety) */
+    margin: 0;
+    padding: 0;
+}
+
+.info-card {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+    /* Let clicks pass through, but enable for children? No, card needs interaction */
+
+    /* Fix pointer events for the card content only */
+    pointer-events: auto;
+
+    transform: translate(20px, -50%);
+    /* Offset slightly right, vert center */
+    max-width: 300px;
+    width: 90%; // Mobile friendly
+}
+
+.card-glass {
+    background: rgba(16, 32, 45, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: #fff;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+
+    position: relative; // For close button
+
+    h3 {
+        margin: 0 0 0.5rem 0;
+        color: #40c9ff;
+        font-size: 1.4rem;
+    }
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: normal;
+        font-size: 1.1rem;
+        color: #e0e0e0;
+    }
+
+    .date {
+        font-size: 0.9rem;
+        color: #aaa;
+        margin-bottom: 1rem;
+        font-style: italic;
+    }
+
+    .details {
+        font-size: 0.95rem;
+        line-height: 1.4;
+
+        ul {
+            padding-left: 1.2rem;
+            margin: 0;
+        }
+
+        li {
+            margin-bottom: 0.25rem;
+        }
+    }
+
+    a {
+        color: #40c9ff;
+        display: block;
+        margin-top: 1rem;
+    }
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+
+    &:hover {
+        color: #fff;
+    }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.intro-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.intro-text {
+    font-size: 4rem;
+    font-weight: bold;
+    color: transparent;
+    background: linear-gradient(135deg, #40c9ff, #ff40c9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    text-shadow: 0 0 20px rgba(64, 201, 255, 0.5);
+    animation: pulse 2s infinite;
+    text-align: center;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        text-shadow: 0 0 20px rgba(64, 201, 255, 0.5);
+    }
+
+    50% {
+        text-shadow: 0 0 40px rgba(255, 64, 201, 0.8);
+    }
+}
