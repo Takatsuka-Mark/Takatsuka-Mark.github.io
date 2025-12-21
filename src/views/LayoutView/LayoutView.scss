@@ -10,6 +10,12 @@
   // 1rem for footer height
   padding: 5rem $content-padding ($content-padding + 1rem);
 
+  &.full-screen {
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
   // hammers disallows text selection, allowing it for large screens
   @media (min-width: breakpoint-min(sm)) {
     user-select: auto !important;
