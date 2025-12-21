@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import Header from '../../components/Header/Header.vue'
 import PreLoader from '../../components/PreLoader/PreLoader.vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 </script>
 
 <script lang="ts">
@@ -39,10 +42,10 @@ export default {
 <template>
   <div>
     <Transition name="hide-navbar">
-      <Header v-if="show_navbar && show_navbar2" class="header"/>
+      <Header v-if="show_navbar && show_navbar2 && !route.meta.fullScreen" class="header"/>
     </Transition>
-    <PreLoader class="loader"/>
-    <div ref="content" class="content">
+    <PreLoader v-if="!route.meta.fullScreen" class="loader"/>
+    <div ref="content" class="content" :class="{ 'full-screen': route.meta.fullScreen }">
       <router-view v-slot="{ Component, route }">
         <Transition name="router-fade" mode="out-in">
           <component :is="Component" :key="route.path" />

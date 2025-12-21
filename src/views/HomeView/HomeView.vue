@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Container from '@/components/Container/Container.vue';
+import { experiences, education } from '@/data/experiences';
 </script>
 
 <template>
@@ -20,21 +21,12 @@ import Container from '@/components/Container/Container.vue';
           Employment
         </template>
         <template v-slot:ht_body>
-          <h2><b>Cognitiv</b></h2>
-          <h3>Software Engineer</h3>  <!-- Include promotions? -->
-          <h4>Nov. 2023 - Current</h4>
-          <br>
-          <h2><b>IBM</b></h2>
-          <h3>DevOps - Software Engineer</h3>
-          <h4>Mar. 2022 - Sept 2023</h4>
-          <br>
-          <h2><b>IBM</b></h2>
-          <h3>DevOps Intern</h3>
-          <h4>May. 2021 - Aug. 2021</h4>
-          <br>
-          <h2><b>SecureCloudDB</b></h2>
-          <h3>Software Engineering Intern</h3>
-          <h4>May. 2020 - Dec. 2020</h4>
+          <div v-for="(job, index) in experiences" :key="index">
+            <h2><b>{{ job.company }}</b></h2>
+            <h3>{{ job.title }}</h3>
+            <h4>{{ job.date }}</h4>
+            <br v-if="index < experiences.length - 1">
+          </div>
         </template>
       </Container>
       <!-- Education -->
@@ -43,11 +35,12 @@ import Container from '@/components/Container/Container.vue';
           Education
         </template>
         <template v-slot:ht_body>
-          <h2><b>Rochester Institute of Technology (RIT)</b></h2>
-          <h3>B.S. in Computer Science</h3>
-          <h3>Minor in Mathematics</h3>
-          <h4>GPA: 3.90</h4>
-          <h4>Aug. 2018 - Dec. 2021</h4>
+          <div v-for="(edu, index) in education" :key="index">
+            <h2><b>{{ edu.company }}</b></h2>
+            <h3>{{ edu.title }}</h3>
+            <h3 v-for="detail in edu.details" :key="detail">{{ detail }}</h3>
+            <h4>{{ edu.date }}</h4>
+          </div>
         </template>
       </Container>
       <!-- Projects -->

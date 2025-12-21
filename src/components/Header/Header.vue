@@ -13,6 +13,9 @@ import InitialsSVG from '../InitialsSVG/InitialsSVG.vue';
           <router-link to="/" class="router-link">
             <h2 class="route-text"><b>Home</b></h2>
           </router-link>
+          <router-link to="/experimental" class="router-link">
+            <h2 class="route-text">Experimental</h2>
+          </router-link>
         </li>
       </ul>
         <!-- TODO reimplement hamburger when more pages are added -->
