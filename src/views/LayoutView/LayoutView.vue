@@ -44,7 +44,7 @@ export default {
     <Transition name="hide-navbar">
       <Header v-if="show_navbar && show_navbar2 && !route.meta.fullScreen" class="header"/>
     </Transition>
-    <PreLoader class="loader"/>
+    <PreLoader v-if="!route.meta.fullScreen" class="loader"/>
     <div ref="content" class="content" :class="{ 'full-screen': route.meta.fullScreen }">
       <router-view v-slot="{ Component, route }">
         <Transition name="router-fade" mode="out-in">

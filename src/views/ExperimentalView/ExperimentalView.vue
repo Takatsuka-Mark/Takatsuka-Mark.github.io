@@ -66,6 +66,7 @@ function initThree() {
 // Phase 5: Overlay State
 const selectedExperience = ref<Experience | null>(null);
 const overlayPos = ref({ x: 0, y: 0 });
+const showIntro = ref(true);
 
 // Interaction
 const raycaster = new THREE.Raycaster();
@@ -269,6 +270,9 @@ function animate() {
 
 onMounted(() => {
   initThree();
+  setTimeout(() => {
+    showIntro.value = false;
+  }, 2000);
 });
 
 onUnmounted(() => {
@@ -288,6 +292,11 @@ onUnmounted(() => {
 
 <template>
   <div class="experimental-container" ref="container">
+    <Transition name="fade">
+      <div v-if="showIntro" class="intro-overlay">
+        <h1 class="intro-text">Experimental V2</h1>
+      </div>
+    </Transition>
     <Transition name="fade">
       <div 
         v-if="selectedExperience" 
@@ -415,5 +424,37 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.intro-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.intro-text {
+  font-size: 4rem;
+  font-weight: bold;
+  color: transparent;
+  background: linear-gradient(135deg, #40c9ff, #ff40c9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+  text-shadow: 0 0 20px rgba(64, 201, 255, 0.5);
+  animation: pulse 2s infinite;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0%, 100% { text-shadow: 0 0 20px rgba(64, 201, 255, 0.5); }
+  50% { text-shadow: 0 0 40px rgba(255, 64, 201, 0.8); }
 }
 </style>
