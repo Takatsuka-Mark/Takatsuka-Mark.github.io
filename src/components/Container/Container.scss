@@ -1,15 +1,15 @@
-@import '../../styles/theme';
+@use '../../styles/theme';
 
 .title {
   margin-top: 0;
-  color: $theme-text-color;
+  color: theme.$theme-text-color;
 }
 
 .container{
   position: relative;
-  padding: $container-padding-vertical $container-padding-horizontal;
+  padding: theme.$container-padding-vertical theme.$container-padding-horizontal;
   width: 100%;
-  margin: $container-margin-vertical $container-margin-horizontal;
+  margin: theme.$container-margin-vertical theme.$container-margin-horizontal;
   //border: dashed #0B2027;
 
   display: flex;

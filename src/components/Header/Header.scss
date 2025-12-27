@@ -1,4 +1,4 @@
-@import '../../styles/theme';
+@use '../../styles/theme';
 
 .app-header {
   padding: 0;
@@ -48,9 +48,9 @@
 #logo {
   // 5x3.5 ratio
 
-  height: $logo_width*0.7;
-  width: $logo_width;
-  stroke: $theme-0;
+  height: theme.$logo_width*0.7;
+  width: theme.$logo_width;
+  stroke: theme.$theme-0;
   stroke-width: 5;
 }
 
@@ -59,7 +59,7 @@
   stroke-dashoffset: 801px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  animation: logo-anim $logo_trace_in ease forwards;
+  animation: logo-anim theme.$logo_trace_in ease forwards;
 }
 
 #logo path:nth-child(2) {
@@ -67,7 +67,7 @@
   stroke-dashoffset: 363px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  animation: logo-anim $logo_trace_in ease forwards;
+  animation: logo-anim theme.$logo_trace_in ease forwards;
 }
 
 @keyframes logo-anim {
@@ -78,7 +78,7 @@
 
 @keyframes fill {
   to {
-    fill: $theme-0;
+    fill: theme.$theme-0;
   }
 }
 
@@ -97,7 +97,7 @@
   right: 12px;
   height: 35px;
   width: 35px;
-  stroke: $theme-0;
+  stroke: theme.$theme-0;
   stroke-width: 6;
 }
 
