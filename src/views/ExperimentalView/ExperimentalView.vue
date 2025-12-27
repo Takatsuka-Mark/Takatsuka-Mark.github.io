@@ -180,7 +180,7 @@ function createForeground() {
   simulation = forceSimulation()
     .numDimensions(3)
     .nodes(nodes)
-    .force('link', forceLink(links).id((d: any) => d.id).distance(40)) // Distance determines spread
+    .force('link', forceLink(links).id((d: any) => d.id).distance(25)) // Reduced distance to keep graph tighter
     .force('charge', forceManyBody().strength(-100)) // Repulsion
     .force('center', forceCenter(0, 0, 0))
     .force('collide', forceCollide(10)); // Prevent overlapping nodes
@@ -276,18 +276,60 @@ function animate() {
   // foregroundGroup.rotation.y += 0.0002; 
   
   // Camera focus logic
-  if (selectedStar) {
-    updateOverlayPosition();
-    selectedStar.getWorldPosition(tempVec);
-    tempVec.multiplyScalar(0.8); 
-    targetFocus.copy(tempVec);
-  } else {
-     // Optional: drift back to center or stay
-  }
+  const targetPos = selectedStar ? selectedStar.position : new THREE.Vector3(0, 0, 0);
+  
+  // 1. Determine optimal camera Z to keep all nodes in view relative to targetPos
+  // We align camera X/Y with targetPos X/Y so it's centered
+  let maxZreq = 100; // Minimum distance
+  
+  const fov = camera.fov * (Math.PI / 180);
+  const aspect = camera.aspect;
+  // tan(fov/2) is the ratio of half-height to distance
+  const tanFov2 = Math.tan(fov / 2);
+  
+  // Iterate all nodes to find most constraining one
+  nodes.forEach(node => {
+     // Distances from the center of view (which is targetPos.x, targetPos.y)
+     const dx = Math.abs(node.x - targetPos.x);
+     const dy = Math.abs(node.y - targetPos.y);
+     const margin = 20; // Padding units
+     
+     // Required distance Zc from node.z to see this dx/dy
+     // visible_y = (dist) * tanFov2 * 2
+     // we want (dy + margin) < visible_y / 2  => (dy + margin) < dist * tanFov2
+     // dist > (dy + margin) / tanFov2
+     
+     // The camera is at Zc, node is at node.z. Distance is (Zc - node.z) assuming Zc > node.z
+     // Zc > node.z + (required_dist)
+     
+     const zReqY = node.z + (dy + margin) / tanFov2;
+     const zReqX = node.z + (dx + margin) / (tanFov2 * aspect);
+     
+     maxZreq = Math.max(maxZreq, zReqY, zReqX);
+  });
+  
+  // Clamping strictness
+  // If we are unconnected, we might zoom way out. 
+  // Limit max zoom for sanity? 
+  maxZreq = Math.min(maxZreq, 400); 
 
-  currentFocus.lerp(targetFocus, 0.05);
+  // Smoothly move camera
+  // Target position is (target.x, target.y, calculated_Z)
+  // Target LookAt is (target.x, target.y, target.z)
+  
+  const currentCamPos = camera.position;
+  const desiredCamPos = new THREE.Vector3(targetPos.x, targetPos.y, maxZreq);
+  
+  // Lerp factor
+  const alpha = 0.05;
+  currentCamPos.lerp(desiredCamPos, alpha);
+  
+  // Look at target (smoothly)
+  currentFocus.lerp(targetPos, alpha);
   camera.lookAt(currentFocus);
   
+  if (selectedStar) updateOverlayPosition();
+
   renderer.render(scene, camera);
 }
 
