@@ -9,8 +9,7 @@ import { forceSimulation, forceManyBody, forceCenter, forceCollide, forceLink } 
 const container = ref<HTMLElement | null>(null);
 
 // Join experiences and education
-// Add 'id' to each node for d3 to match them up
-const allNodesData = [...experiences, ...education].map((d, i) => ({ ...d, id: i }));
+const allNodesData = [...experiences].reverse().map((d, i) => ({ ...d, id: i }));
 
 // Three.js variables
 let scene: THREE.Scene;
@@ -221,20 +220,10 @@ function createForeground() {
     vx: 0, vy: 0, vz: 0
   }));
 
-  // Create links (Simple chain or MST-like structure to ensure connectivity)
-  // For now, let's link them essentially linearly + random to form a cluster
+  // Create links (Chronological chain)
   links = [];
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-       // Connect everyone to everyone for a small graph triggers a nice cluster
-       // Or do nearest neighbors dynamically? 
-       // Let's do fully connected but weak strength for now, or just a chain.
-       // User asked for "self organizing". 
-       // Connecting 0-1, 1-2, 2-3... ensures one component.
-       if (Math.random() > 0.5 || j === i + 1) {
-         links.push({ source: nodes[i].id, target: nodes[j].id });
-       }
-    }
+  for (let i = 0; i < nodes.length - 1; i++) {
+    links.push({ source: nodes[i].id, target: nodes[i+1].id });
   }
 
   // Setup Simulation
