@@ -29,9 +29,28 @@ let simulation: any;
 let nodes: any[] = [];
 let links: any[] = [];
 
+// Node Labels
+interface NodeLabel {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}
+const nodeLabels = ref<NodeLabel[]>([]);
+
 // Initialize Three.js
 function initThree() {
   if (!container.value) return;
+
+  // Init labels
+  nodeLabels.value = allNodesData.map(d => ({
+    id: typeof d.id === 'number' ? d.id : 0, // Ensure ID
+    text: d.company,
+    x: 0,
+    y: 0,
+    visible: false
+  }));
 
   // Scene
   scene = new THREE.Scene();
@@ -98,6 +117,48 @@ function updateOverlayPosition() {
   const y = (-(tempVec.y * .5) + .5) * container.value.clientHeight;
   
   overlayPos.value = { x, y };
+}
+
+function updateNodeLabels() {
+  if (!container.value || nodes.length === 0) return;
+
+  const width = container.value.clientWidth;
+  const height = container.value.clientHeight;
+
+  nodes.forEach((node, i) => {
+    // node is the d3 simulation node which holds x,y,z
+    // We can use the mesh position directly if we want, or the node pos. 
+    // They are synced in animate() before this call usually.
+    // Let's use the mesh position to be safe if we add offsets later
+    const mesh = foregroundGroup.children.filter(c => c instanceof THREE.Mesh)[i];
+    if (!mesh) return;
+
+    mesh.getWorldPosition(tempVec);
+    
+    // Check if behind camera
+    // Project method will return z > 1 if outside frustum in NDC z? 
+    // Actually project transforms vector to NDC. 
+    // z range is -1 to 1 for inside frustum (OpenGL style)
+    tempVec.project(camera);
+
+    const isVisible = tempVec.z < 1 && tempVec.z > -1 
+                      && tempVec.x >= -1 && tempVec.x <= 1
+                      && tempVec.y >= -1 && tempVec.y <= 1;
+
+    if (isVisible) {
+      const x = (tempVec.x * .5 + .5) * width;
+      const y = (-(tempVec.y * .5) + .5) * height;
+      
+      const label = nodeLabels.value[i]; 
+      if (label) {
+        label.x = x;
+        label.y = y - 30; // Shift up slightly
+        label.visible = true;
+      }
+    } else {
+       if (nodeLabels.value[i]) nodeLabels.value[i].visible = false;
+    }
+  });
 }
 
 function onClick(event: MouseEvent) {
@@ -271,6 +332,9 @@ function animate() {
     backgroundStars.rotation.y += 0.00005; // Keep this subtle
   }
   
+  // Update Labels
+  updateNodeLabels();
+  
   // Foreground rotation - REMOVED random tumbling
   // But maybe we want slight global drift?
   // foregroundGroup.rotation.y += 0.0002; 
@@ -357,6 +421,24 @@ onUnmounted(() => {
 
 <template>
   <div class="experimental-container" ref="container">
+    
+    <!-- Page Title -->
+    <div class="page-title">Experience</div>
+
+    <!-- Node Labels -->
+    <div 
+        v-for="label in nodeLabels" 
+        :key="label.id" 
+        class="node-label"
+        :style="{ 
+            left: label.x + 'px', 
+            top: label.y + 'px', 
+            opacity: label.visible ? 0.7 : 0 
+        }"
+    >
+        {{ label.text }}
+    </div>
+
     <Transition name="fade">
       <div v-if="showIntro" class="intro-overlay">
         <h1 class="intro-text">Experimental V2</h1>
