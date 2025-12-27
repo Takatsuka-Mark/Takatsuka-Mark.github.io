@@ -3,11 +3,14 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import * as THREE from 'three';
 import type { Experience } from '../../data/experiences';
 import { experiences, education } from '../../data/experiences';
+// @ts-ignore
+import { forceSimulation, forceManyBody, forceCenter, forceCollide, forceLink } from 'd3-force-3d';
 
 const container = ref<HTMLElement | null>(null);
 
 // Join experiences and education
-const allNodesData = [...experiences, ...education];
+// Add 'id' to each node for d3 to match them up
+const allNodesData = [...experiences, ...education].map((d, i) => ({ ...d, id: i }));
 
 // Three.js variables
 let scene: THREE.Scene;
@@ -18,8 +21,13 @@ let backgroundStars: THREE.Points;
 let foregroundGroup: THREE.Group;
 
 // Config
-const BG_STAR_COUNT = 1500;
-const NODE_RADIUS = 30; // Spread of foreground nodes
+const BG_STAR_COUNT = 15000; // Increased 10x
+const NODE_RADIUS = 30; 
+
+// D3 Simulation variables
+let simulation: any;
+let nodes: any[] = [];
+let links: any[] = [];
 
 // Initialize Three.js
 function initThree() {
@@ -27,7 +35,6 @@ function initThree() {
 
   // Scene
   scene = new THREE.Scene();
-  // Optional: distinct background color or fog
   scene.background = new THREE.Color(0x050510); // Deep space blue/black
   scene.fog = new THREE.FogExp2(0x050510, 0.002);
 
@@ -46,7 +53,7 @@ function initThree() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.value.appendChild(renderer.domElement);
 
-  // Lighting (for meshes)
+  // Lighting
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
   const pointLight = new THREE.PointLight(0xffffff, 1);
@@ -87,7 +94,6 @@ function updateOverlayPosition() {
   tempVec.project(camera);
   
   // Convert to pixel coordinates
-  // Move it slightly to the right/top of the star
   const x = (tempVec.x * .5 + .5) * container.value.clientWidth;
   const y = (-(tempVec.y * .5) + .5) * container.value.clientHeight;
   
@@ -97,8 +103,6 @@ function updateOverlayPosition() {
 function onClick(event: MouseEvent) {
   if (!container.value) return;
 
-  // Calculate mouse position in normalized device coordinates
-  // (-1 to +1) for both components
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -110,10 +114,9 @@ function onClick(event: MouseEvent) {
 
   if (intersects.length > 0) {
     selectedStar = intersects[0].object;
-    selectedExperience.value = selectedStar.userData as Experience;
-    console.log('Clicked experience:', selectedStar.userData);
+    // @ts-ignore
+    selectedExperience.value = selectedStar.userData; // userData is the full Experience object
   } else {
-    // Clicked void - deselect
     selectedStar = null;
     selectedExperience.value = null;
   }
@@ -148,80 +151,75 @@ function createForeground() {
   foregroundGroup = new THREE.Group();
   scene.add(foregroundGroup);
 
-  allNodesData.forEach((data, index) => {
-    // Create a mesh for each experience
-    // Using a simple sphere for now as "star" representation
+  // Init nodes with random positions
+  nodes = allNodesData.map(d => ({
+    ...d,
+    x: Math.random() * 50 - 25,
+    y: Math.random() * 50 - 25,
+    z: Math.random() * 50 - 25,
+    vx: 0, vy: 0, vz: 0
+  }));
+
+  // Create links (Simple chain or MST-like structure to ensure connectivity)
+  // For now, let's link them essentially linearly + random to form a cluster
+  links = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+       // Connect everyone to everyone for a small graph triggers a nice cluster
+       // Or do nearest neighbors dynamically? 
+       // Let's do fully connected but weak strength for now, or just a chain.
+       // User asked for "self organizing". 
+       // Connecting 0-1, 1-2, 2-3... ensures one component.
+       if (Math.random() > 0.5 || j === i + 1) {
+         links.push({ source: nodes[i].id, target: nodes[j].id });
+       }
+    }
+  }
+
+  // Setup Simulation
+  simulation = forceSimulation()
+    .numDimensions(3)
+    .nodes(nodes)
+    .force('link', forceLink(links).id((d: any) => d.id).distance(40)) // Distance determines spread
+    .force('charge', forceManyBody().strength(-100)) // Repulsion
+    .force('center', forceCenter(0, 0, 0))
+    .force('collide', forceCollide(10)); // Prevent overlapping nodes
+
+  // Create Meshes
+  nodes.forEach((node) => {
     const geometry = new THREE.SphereGeometry(1.5, 16, 16);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x40c9ff, // Cyan-ish star
+      color: 0x40c9ff,
       emissive: 0x004080,
       emissiveIntensity: 0.5,
       roughness: 0.2,
       metalness: 0.8
     });
     
+    // @ts-ignore
     const star = new THREE.Mesh(geometry, material);
-    
-    // Position randomly within a central cluster
-    const r = NODE_RADIUS;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos((Math.random() * 2) - 1);
-    
-    const x = r * Math.sin(phi) * Math.cos(theta);
-    const y = r * Math.sin(phi) * Math.sin(theta);
-    const z = r * Math.cos(phi);
-    
-    star.position.set(x, y, z);
-    
-    // Store metadata on the mesh for later (Phase 4/5)
-    star.userData = { ...data, id: index };
-    
+    star.userData = node; // Link mesh back to data
     foregroundGroup.add(star);
   });
 
-  createConnections();
-}
-
-function createConnections() {
-  if (foregroundGroup.children.length < 2) return;
-
-  const stars = foregroundGroup.children as THREE.Mesh[];
-  const positions: number[] = [];
+  // Create Lines (visuals)
+  // We'll update their positions in animate()
+  // Just create a LineSegments object that will hold all lines
+  const geometry = new THREE.BufferGeometry();
+  // Allocate enough buffer for links
+  const positions = new Float32Array(links.length * 6); // 2 points * 3 coords
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0x40c9ff,
     transparent: true,
     opacity: 0.2
   });
-
-  // Calculate nearest neighbors
-  // For each star, find closest 1-2 neighbors
-  stars.forEach((star, i) => {
-    const starPos = star.position;
-    
-    // Sort other stars by distance
-    const others = stars.map((other, j) => {
-      if (i === j) return { index: -1, distance: Infinity };
-      return { index: j, distance: starPos.distanceTo(other.position) };
-    }).filter(item => item.index !== -1);
-
-    others.sort((a, b) => a.distance - b.distance);
-
-    // Connect to closest 1 or 2
-    const numConnections = Math.min(others.length, 2); 
-    for (let k = 0; k < numConnections; k++) {
-      const neighbor = stars[others[k].index];
-      
-      // Add pair of vertices
-      positions.push(starPos.x, starPos.y, starPos.z);
-      positions.push(neighbor.position.x, neighbor.position.y, neighbor.position.z);
-    }
-  });
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   
-  const lines = new THREE.LineSegments(geometry, lineMaterial);
-  foregroundGroup.add(lines);
+  const lineSegments = new THREE.LineSegments(geometry, lineMaterial);
+  // @ts-ignore
+  lineSegments.userData = { isLineLayer: true };
+  foregroundGroup.add(lineSegments);
 }
 
 function onWindowResize() {
@@ -234,32 +232,57 @@ function onWindowResize() {
 
 function animate() {
   animationId = requestAnimationFrame(animate);
+
+  // Run simulation tick (optional: could run only N times, but continuous is smooth)
+  // simulation.tick(); // d3-force usually ticks automatically if not stopped, 
+  // but usually we just read x/y/z. forceSimulation starts automatically.
+
+  // Update Node Meshes
+  const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
+  meshes.forEach((mesh, i) => {
+     // nodes[i] matches meshes[i] order if we created them in order
+     // Double check data ID if unsure, but sequential creation is safe here
+     const node = nodes[i]; 
+     mesh.position.set(node.x, node.y, node.z);
+  });
+
+  // Update Links
+  const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+  if (lineLayer) {
+      const positions = lineLayer.geometry.attributes.position.array as Float32Array;
+      links.forEach((link, i) => {
+          // d3-force replaces source/target with object references after init
+          const source = link.source; 
+          const target = link.target;
+          
+          positions[i * 6 + 0] = source.x;
+          positions[i * 6 + 1] = source.y;
+          positions[i * 6 + 2] = source.z;
+          
+          positions[i * 6 + 3] = target.x;
+          positions[i * 6 + 4] = target.y;
+          positions[i * 6 + 5] = target.z;
+      });
+      lineLayer.geometry.attributes.position.needsUpdate = true;
+  }
   
-  // Subtle rotation of the entire universe or clusters
+  // Background rotation
   if (backgroundStars) {
-    backgroundStars.rotation.y += 0.00005;
+    backgroundStars.rotation.y += 0.00005; // Keep this subtle
   }
   
-  if (foregroundGroup) {
-    foregroundGroup.rotation.y += 0.0002;
-    foregroundGroup.rotation.x += 0.0001;
-  }
+  // Foreground rotation - REMOVED random tumbling
+  // But maybe we want slight global drift?
+  // foregroundGroup.rotation.y += 0.0002; 
   
   // Camera focus logic
   if (selectedStar) {
-    // Project for overlay (modifies tempVec internally)
     updateOverlayPosition();
-    
-    // Get fresh world position for focus logic
     selectedStar.getWorldPosition(tempVec);
-    
-    // Clamp: Look 80% of the way towards the star
-    // This centers it more but keeps context
     tempVec.multiplyScalar(0.8); 
     targetFocus.copy(tempVec);
   } else {
-     // Optional: drift back to center
-     // targetFocus.set(0, 0, 0);
+     // Optional: drift back to center or stay
   }
 
   currentFocus.lerp(targetFocus, 0.05);
@@ -279,14 +302,14 @@ onUnmounted(() => {
   cancelAnimationFrame(animationId);
   window.removeEventListener('resize', onWindowResize);
   
-  // Cleanup Three.js resources
+  if (simulation) simulation.stop();
+
   if (renderer) {
     renderer.dispose();
     if (renderer.domElement && container.value) {
       container.value.removeChild(renderer.domElement);
     }
   }
-  // Dispose geometries/materials... (simplified for now)
 });
 </script>
 
