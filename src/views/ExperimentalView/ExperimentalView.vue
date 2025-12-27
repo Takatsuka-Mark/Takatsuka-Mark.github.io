@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import * as THREE from 'three';
 import type { Experience } from '../../data/experiences';
 import { experiences, education } from '../../data/experiences';
@@ -80,6 +80,7 @@ function initThree() {
 
   createBackground();
   createForeground();
+  createTimeline(); // New
   
   // Start loop
   animate();
@@ -93,6 +94,40 @@ const selectedExperience = ref<Experience | null>(null);
 const overlayPos = ref({ x: 0, y: 0 });
 const showIntro = ref(true);
 const isBackgroundMoving = ref(true);
+const isTimelineView = ref(false);
+let timelineGroup: THREE.Group;
+
+
+
+// Watch mode switch to handle one-time state changes
+watch(isTimelineView, (newVal) => {
+  if (newVal) {
+    // Switch TO Timeline
+    if (simulation) simulation.stop(); // Stop completely so D3 doesn't fight
+    
+    // Show Timeline visuals
+    if (timelineGroup) timelineGroup.visible = true;
+    
+    // Hide Graph connections
+    const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+    if (lineLayer) lineLayer.visible = false;
+
+  } else {
+    // Switch TO Graph
+    // Restart simulation to let nodes float back
+    if (simulation) {
+        simulation.alpha(1).restart();
+    }
+    
+    // Hide Timeline visuals
+    if (timelineGroup) timelineGroup.visible = false;
+    
+    // Show Graph connections
+    const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+    if (lineLayer) lineLayer.visible = true;
+  }
+});
+
 
 // Interaction
 const raycaster = new THREE.Raycaster();
@@ -273,6 +308,72 @@ function createForeground() {
   foregroundGroup.add(lineSegments);
 }
 
+function createTimeline() {
+  timelineGroup = new THREE.Group();
+  scene.add(timelineGroup);
+  timelineGroup.visible = false; // Hidden by default
+
+  // Calculate Range
+  // @ts-ignore
+  const startDates = nodes.map(n => n.startDate).filter(d => d !== undefined);
+  // @ts-ignore
+  const endDates = nodes.map(n => n.endDate).filter(d => d !== undefined);
+  
+  const minYear = Math.floor(Math.min(...startDates));
+  const maxYear = Math.ceil(Math.max(...endDates));
+  
+  const yearSpan = maxYear - minYear;
+  const unitPerYear = 30; // Scale
+  const totalWidth = yearSpan * unitPerYear;
+  const startX = -totalWidth / 2;
+
+  // 1. Main Axis Line
+  const axisGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(startX, -15, 0),
+      new THREE.Vector3(startX + totalWidth, -15, 0)
+  ]);
+  const axisMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true });
+  const axis = new THREE.Line(axisGeo, axisMat);
+  timelineGroup.add(axis);
+
+  // 2. Ticks
+  const ticks = [];
+  for (let y = minYear; y <= maxYear; y++) {
+      const x = startX + (y - minYear) * unitPerYear;
+      ticks.push(x, -15, 0);
+      ticks.push(x, -17, 0); // Short tick down
+  }
+  const ticksGeo = new THREE.BufferGeometry();
+  ticksGeo.setAttribute('position', new THREE.Float32BufferAttribute(ticks, 3));
+  const ticksLines = new THREE.LineSegments(ticksGeo, axisMat);
+  timelineGroup.add(ticksLines);
+
+  // Store timeline positions on nodes for easy lerping
+  nodes.forEach(node => {
+      if (node.startDate !== undefined) {
+          const x = startX + (node.startDate - minYear) * unitPerYear;
+          // @ts-ignore
+          node.timelinePos = new THREE.Vector3(x, -10, 0); // Just above axis
+          
+          // Duration Line (Bar)
+          if (node.endDate !== undefined) {
+              const endX = startX + (node.endDate - minYear) * unitPerYear;
+              const barGeo = new THREE.BufferGeometry().setFromPoints([
+                  new THREE.Vector3(x, -10, 0),
+                  new THREE.Vector3(endX, -10, 0)
+              ]);
+              const barMat = new THREE.LineBasicMaterial({ color: 0x40c9ff, opacity: 0.8, transparent: true });
+              const bar = new THREE.Line(barGeo, barMat);
+              timelineGroup.add(bar);
+          }
+      } else {
+          // Fallback for nodes without date
+          // @ts-ignore
+          node.timelinePos = new THREE.Vector3(0, 50, 0); // Float high up?
+      }
+  });
+}
+
 function onWindowResize() {
   if (!container.value || !camera || !renderer) return;
   
@@ -294,12 +395,37 @@ function animate() {
      // nodes[i] matches meshes[i] order if we created them in order
      // Double check data ID if unsure, but sequential creation is safe here
      const node = nodes[i]; 
+     
+     if (isTimelineView.value) {
+         // Lerp to timeline position
+         // @ts-ignore
+         if (node.timelinePos) {
+             // We modify the node.x/y/z directly so the camera logic still works naturally?
+             // Or better, modify smooth target.
+             // Implem: lerp node position directly here, simulation OFF
+             node.x += (node.timelinePos.x - node.x) * 0.1;
+             node.y += (node.timelinePos.y - node.y) * 0.1;
+             node.z += (node.timelinePos.z - node.z) * 0.1;
+         }
+     } else {
+         // Simulation ON (handled by d3 usually, but if we dragged them away manually, 
+         // we need to let d3 take back control. d3 updates x/y/z on tick(), so we just read them.
+         // If we want smooth transition BACK, we might need to verify if d3 snaps or lerps.
+         // d3 force simulation is iterative. If we stop updating 'node' from simulation, it pauses.
+         // But if we override node.x, d3 will try to correct it in next tick.
+         // So for "smooth return", we just let d3 do its thing.
+         // However, if we stopped ticking, we must restart.
+     }
+     
      mesh.position.set(node.x, node.y, node.z);
   });
+  
+
+
 
   // Update Links
   const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
-  if (lineLayer) {
+  if (lineLayer && lineLayer.geometry && lineLayer.geometry.attributes.position) {
       const positions = lineLayer.geometry.attributes.position.array as Float32Array;
       links.forEach((link, i) => {
           // d3-force replaces source/target with object references after init
@@ -361,6 +487,13 @@ function animate() {
      
      maxZreq = Math.max(maxZreq, zReqY, zReqX);
   });
+
+  // Override camera for Timeline
+  if (isTimelineView.value) {
+      // Fixed camera position for timeline
+      targetPos.set(0, -10, 0); // Look at center of timeline
+      maxZreq = 180; // Fixed zoom
+  }
   
   // Clamping strictness
   // If we are unconnected, we might zoom way out. 
@@ -420,6 +553,11 @@ onUnmounted(() => {
         {{ isBackgroundMoving ? 'PAUSE STARS' : 'PLAY STARS' }}
     </div>
 
+    <!-- Timeline Toggle -->
+    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView">
+        {{ isTimelineView ? 'SHOW GRAPH' : 'SHOW TIMELINE' }}
+    </div>
+
     <!-- Node Labels -->
     <div 
         v-for="label in nodeLabels" 
@@ -464,3 +602,30 @@ onUnmounted(() => {
 </template>
 
 <style scoped src="./ExperimentalView.scss" lang="scss"/>
+
+<style scoped>
+.timeline-toggle {
+    position: absolute;
+    top: 5rem; /* Below the PAUSE STARS button */
+    left: 2rem;
+    color: #40c9ff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 20;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(16, 32, 45, 0.6);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+}
+
+.timeline-toggle:hover {
+    background: rgba(64, 201, 255, 0.2);
+    color: #fff;
+    border-color: rgba(64, 201, 255, 0.6);
+}
+</style>
