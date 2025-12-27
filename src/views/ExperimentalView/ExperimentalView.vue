@@ -92,6 +92,7 @@ function initThree() {
 const selectedExperience = ref<Experience | null>(null);
 const overlayPos = ref({ x: 0, y: 0 });
 const showIntro = ref(true);
+const isBackgroundMoving = ref(true);
 
 // Interaction
 const raycaster = new THREE.Raycaster();
@@ -317,7 +318,7 @@ function animate() {
   }
   
   // Background rotation
-  if (backgroundStars) {
+  if (backgroundStars && isBackgroundMoving.value) {
     backgroundStars.rotation.y += 0.00005; // Keep this subtle
   }
   
@@ -413,6 +414,11 @@ onUnmounted(() => {
     
     <!-- Page Title -->
     <div class="page-title">Experience</div>
+
+    <!-- Background Toggle -->
+    <div class="bg-toggle" @click="isBackgroundMoving = !isBackgroundMoving">
+        {{ isBackgroundMoving ? 'PAUSE STARS' : 'PLAY STARS' }}
+    </div>
 
     <!-- Node Labels -->
     <div 
