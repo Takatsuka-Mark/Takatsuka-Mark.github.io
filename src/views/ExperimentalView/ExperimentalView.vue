@@ -467,38 +467,40 @@ function animate() {
   // tan(fov/2) is the ratio of half-height to distance
   const tanFov2 = Math.tan(fov / 2);
   
-  // Iterate all nodes to find most constraining one
-  nodes.forEach(node => {
-     // Distances from the center of view (which is targetPos.x, targetPos.y)
-     const dx = Math.abs(node.x - targetPos.x);
-     const dy = Math.abs(node.y - targetPos.y);
-     const margin = 20; // Padding units
-     
-     // Required distance Zc from node.z to see this dx/dy
-     // visible_y = (dist) * tanFov2 * 2
-     // we want (dy + margin) < visible_y / 2  => (dy + margin) < dist * tanFov2
-     // dist > (dy + margin) / tanFov2
-     
-     // The camera is at Zc, node is at node.z. Distance is (Zc - node.z) assuming Zc > node.z
-     // Zc > node.z + (required_dist)
-     
-     const zReqY = node.z + (dy + margin) / tanFov2;
-     const zReqX = node.z + (dx + margin) / (tanFov2 * aspect);
-     
-     maxZreq = Math.max(maxZreq, zReqY, zReqX);
-  });
+  // 1. Determine optimal camera Z
+  maxZreq = 100;
 
-  // Override camera for Timeline
   if (isTimelineView.value) {
-      // Fixed camera position for timeline
-      targetPos.set(0, -10, 0); // Look at center of timeline
-      maxZreq = 180; // Fixed zoom
+     // TIMELINE VIEW CAMERA LOGIC
+     if (selectedStar) {
+         // Focus on selected node
+         targetPos.copy(selectedStar.position);
+         maxZreq = 100; // Zoom in for detail
+     } else {
+         // Overview of timeline
+         targetPos.set(0, -10, 0); 
+         maxZreq = 180;
+     }
+  } else {
+      // GRAPH VIEW CAMERA LOGIC (Fit All)
+      const fov = camera.fov * (Math.PI / 180);
+      const aspect = camera.aspect;
+      const tanFov2 = Math.tan(fov / 2);
+      
+      nodes.forEach(node => {
+         const dx = Math.abs(node.x - targetPos.x);
+         const dy = Math.abs(node.y - targetPos.y);
+         const margin = 20;
+         
+         const zReqY = node.z + (dy + margin) / tanFov2;
+         const zReqX = node.z + (dx + margin) / (tanFov2 * aspect);
+         
+         maxZreq = Math.max(maxZreq, zReqY, zReqX);
+      });
+      // Clamping strictness
+      maxZreq = Math.min(maxZreq, 400); 
   }
-  
-  // Clamping strictness
-  // If we are unconnected, we might zoom way out. 
-  // Limit max zoom for sanity? 
-  maxZreq = Math.min(maxZreq, 400); 
+ 
 
   // Smoothly move camera
   // Target position is (target.x, target.y, calculated_Z)
