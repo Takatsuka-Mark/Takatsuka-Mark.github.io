@@ -114,6 +114,14 @@ watch(isTimelineView, (newVal) => {
 
   } else {
     // Switch TO Graph
+    // Randomize positions slightly to break the line structure
+    nodes.forEach(node => {
+        // Reset velocity to ensure movement
+        node.vx = (Math.random() - 0.5) * 0.5;
+        node.vy = (Math.random() - 0.5) * 0.5;
+        node.vz = (Math.random() - 0.5) * 0.5;
+    });
+
     // Restart simulation to let nodes float back
     if (simulation) {
         simulation.alpha(1).restart();
