@@ -149,12 +149,12 @@ watch(isTimelineView, (newVal) => {
 
   } else {
     // Switch TO Graph
-    // Randomize positions slightly to break the line structure
+    // Randomize velocity to break the line structure naturally, but don't teleport positions
     nodes.forEach(node => {
-        // Reset velocity to ensure movement
-        node.vx = (Math.random() - 0.5) * 0.5;
-        node.vy = (Math.random() - 0.5) * 0.5;
-        node.vz = (Math.random() - 0.5) * 0.5;
+        // Kick them!
+        node.vx = (Math.random() - 0.5) * 5;
+        node.vy = (Math.random() - 0.5) * 5;
+        node.vz = (Math.random() - 0.5) * 5;
     });
 
     // Restart simulation to let nodes float back
@@ -539,22 +539,24 @@ function animate() {
              // We modify the node.x/y/z directly so the camera logic still works naturally?
              // Or better, modify smooth target.
              // Implem: lerp node position directly here, simulation OFF
-             node.x += (node.timelinePos.x - node.x) * 0.1;
-             node.y += (node.timelinePos.y - node.y) * 0.1;
-             node.z += (node.timelinePos.z - node.z) * 0.1;
-         }
-     } else {
-         // Simulation ON (handled by d3 usually, but if we dragged them away manually, 
-         // we need to let d3 take back control. d3 updates x/y/z on tick(), so we just read them.
-         // If we want smooth transition BACK, we might need to verify if d3 snaps or lerps.
-         // d3 force simulation is iterative. If we stop updating 'node' from simulation, it pauses.
-         // But if we override node.x, d3 will try to correct it in next tick.
-         // So for "smooth return", we just let d3 do its thing.
-         // However, if we stopped ticking, we must restart.
-     }
-     
-     mesh.position.set(node.x, node.y, node.z);
-  });
+             const lerpSpeed = 0.04; // Slower transition
+             node.x += (node.timelinePos.x - node.x) * lerpSpeed;
+             node.y += (node.timelinePos.y - node.y) * lerpSpeed;
+            node.z += (node.timelinePos.z - node.z) * lerpSpeed;
+            
+            // Sync mesh exactly to node (since node is already lerping)
+            mesh.position.set(node.x, node.y, node.z);
+        }
+    } else {
+        // Simulation ON
+        // Apply visual smoothing so it matches the enter speed feeling
+        const lerpSpeed = 0.04;
+        mesh.position.x += (node.x - mesh.position.x) * lerpSpeed;
+        mesh.position.y += (node.y - mesh.position.y) * lerpSpeed;
+        mesh.position.z += (node.z - mesh.position.z) * lerpSpeed;
+    }
+    // mesh.position.set(node.x, node.y, node.z); // Removed strict set
+ });
   
 
 
