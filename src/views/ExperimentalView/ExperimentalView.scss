@@ -202,3 +202,13 @@
         border-color: rgba(64, 201, 255, 0.6);
     }
 }
+
+.timeline-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 1;
+    font-family: monospace;
+}

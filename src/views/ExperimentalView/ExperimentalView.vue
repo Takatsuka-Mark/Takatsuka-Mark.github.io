@@ -38,6 +38,41 @@ interface NodeLabel {
 }
 const nodeLabels = ref<NodeLabel[]>([]);
 
+interface TimelineLabel {
+  id: string;
+  text: string;
+  x: number;
+  y: number; // screen y
+  worldPos: THREE.Vector3;
+  visible: boolean;
+}
+const timelineLabels = ref<TimelineLabel[]>([]);
+
+// Color Palette Helper
+function checksum(s: string): number {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+        hash = (hash << 5) - hash + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
+}
+
+const colorPalette = [
+    0x40c9ff, // Cyan
+    0xff5555, // Red
+    0x55ff55, // Green
+    0xffaa00, // Orange
+    0xaa55ff, // Purple
+    0xff55aa  // Pink
+];
+
+function getCompanyColor(company: string): number {
+    const idx = Math.abs(checksum(company)) % colorPalette.length;
+    return colorPalette[idx];
+}
+
+
 // Initialize Three.js
 function initThree() {
   if (!container.value) return;
@@ -202,6 +237,27 @@ function updateNodeLabels() {
        if (nodeLabels.value[i]) nodeLabels.value[i].visible = false;
     }
   });
+  
+  // Update Timeline Labels
+  if (isTimelineView.value) {
+      timelineLabels.value.forEach(label => {
+          // Use stored worldPos
+          tempVec.copy(label.worldPos);
+          tempVec.project(camera);
+          
+          const isVisible = tempVec.z < 1 && tempVec.z > -1 
+                          && tempVec.x >= -1 && tempVec.x <= 1
+                          && tempVec.y >= -1 && tempVec.y <= 1;
+                          
+          if (isVisible) {
+              label.x = (tempVec.x * .5 + .5) * width;
+              label.y = (-(tempVec.y * .5) + .5) * height;
+              label.visible = true;
+          } else {
+              label.visible = false;
+          }
+      });
+  }
 }
 
 function onClick(event: MouseEvent) {
@@ -283,7 +339,7 @@ function createForeground() {
   nodes.forEach((node) => {
     const geometry = new THREE.SphereGeometry(1.5, 16, 16);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x40c9ff,
+      color: getCompanyColor(node.company),
       emissive: 0x004080,
       emissiveIntensity: 0.5,
       roughness: 0.2,
@@ -322,65 +378,137 @@ function createTimeline() {
   timelineGroup.visible = false; // Hidden by default
 
   // Calculate Range
-  // @ts-ignore
-  const startDates = nodes.map(n => n.startDate).filter(d => d !== undefined);
-  // @ts-ignore
-  const endDates = nodes.map(n => n.endDate).filter(d => d !== undefined);
+  const startDates = nodes.map(n => n.startDate).filter((d): d is number => d !== undefined);
+  const endDates = nodes.map(n => n.endDate).filter((d): d is number => d !== undefined);
   
+  if (startDates.length === 0) return; // Should not happen with valid data
+  
+  // Add some padding
   const minYear = Math.floor(Math.min(...startDates));
   const maxYear = Math.ceil(Math.max(...endDates));
   
-  const yearSpan = maxYear - minYear;
   const unitPerYear = 30; // Scale
-  const totalWidth = yearSpan * unitPerYear;
-  const startX = -totalWidth / 2;
-
+  
+  // Adjust bounds relative to a center point or just start from left?
+  // Let's center the whole timeline around 0
+  const range = maxYear - minYear;
+  const startX = -(range * unitPerYear) / 2;
+  
   // 1. Main Axis Line
+  const totalWidth = range * unitPerYear;
+  
   const axisGeo = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(startX, -15, 0),
       new THREE.Vector3(startX + totalWidth, -15, 0)
   ]);
-  const axisMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true });
+  const axisMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true });
   const axis = new THREE.Line(axisGeo, axisMat);
   timelineGroup.add(axis);
 
-  // 2. Ticks
-  const ticks = [];
+  // 2. Axis Ticks & Labels (Years)
+  const axisTicks = [];
+  timelineLabels.value = [];
+  
   for (let y = minYear; y <= maxYear; y++) {
       const x = startX + (y - minYear) * unitPerYear;
-      ticks.push(x, -15, 0);
-      ticks.push(x, -17, 0); // Short tick down
+      axisTicks.push(x, -15, 0);
+      axisTicks.push(x, -18, 0); // Tick down
+      
+      // Store label info
+      timelineLabels.value.push({
+          id: `year-${y}`,
+          text: y.toString(),
+          x: 0,
+          y: 0,
+          worldPos: new THREE.Vector3(x, -25, 0),
+          visible: false
+      });
   }
-  const ticksGeo = new THREE.BufferGeometry();
-  ticksGeo.setAttribute('position', new THREE.Float32BufferAttribute(ticks, 3));
-  const ticksLines = new THREE.LineSegments(ticksGeo, axisMat);
-  timelineGroup.add(ticksLines);
+  
+  const axisTicksGeo = new THREE.BufferGeometry();
+  axisTicksGeo.setAttribute('position', new THREE.Float32BufferAttribute(axisTicks, 3));
+  const axisTicksLines = new THREE.LineSegments(axisTicksGeo, axisMat);
+  timelineGroup.add(axisTicksLines);
 
-  // Store timeline positions on nodes for easy lerping
-  nodes.forEach(node => {
-      if (node.startDate !== undefined) {
-          const x = startX + (node.startDate - minYear) * unitPerYear;
-          // @ts-ignore
-          node.timelinePos = new THREE.Vector3(x, -10, 0); // Just above axis
-          
-          // Duration Line (Bar)
-          if (node.endDate !== undefined) {
-              const endX = startX + (node.endDate - minYear) * unitPerYear;
-              const barGeo = new THREE.BufferGeometry().setFromPoints([
-                  new THREE.Vector3(x, -10, 0),
-                  new THREE.Vector3(endX, -10, 0)
-              ]);
-              const barMat = new THREE.LineBasicMaterial({ color: 0x40c9ff, opacity: 0.8, transparent: true });
-              const bar = new THREE.Line(barGeo, barMat);
-              timelineGroup.add(bar);
+  // 3. Experience Bars (Stacked)
+  // Sort nodes by startDate
+  const sortedNodes = [...nodes].sort((a, b) => (a.startDate || 0) - (b.startDate || 0));
+  
+  // Lanes logic
+  const lanes: number[] = []; // Stores the endDate of the last item in each lane
+  const laneHeight = 10;
+  const baseHeight = -5; // Start slightly above axis
+  
+  sortedNodes.forEach(node => {
+      if (node.startDate === undefined) {
+           // Fallback for non-dated nodes
+           // @ts-ignore
+           node.timelinePos = new THREE.Vector3(0, 50, 0);
+           return;
+      }
+      
+      const nodeStart = node.startDate;
+      // @ts-ignore
+      const nodeEnd = node.endDate || node.startDate + 0.5; // fallback duration
+      
+      // Find a lane
+      let laneIndex = -1;
+      for (let i = 0; i < lanes.length; i++) {
+          if (lanes[i] < nodeStart) {
+              laneIndex = i;
+              break;
           }
-      } else {
-          // Fallback for nodes without date
-          // @ts-ignore
-          node.timelinePos = new THREE.Vector3(0, 50, 0); // Float high up?
+      }
+      
+      if (laneIndex === -1) {
+          laneIndex = lanes.length;
+          lanes.push(0);
+      }
+      
+      // Update lane
+      lanes[laneIndex] = nodeEnd;
+      
+      // Calculate Position
+      const xStart = startX + (nodeStart - minYear) * unitPerYear;
+      const xEnd = startX + (nodeEnd - minYear) * unitPerYear;
+      const yPos = baseHeight + (laneIndex * laneHeight);
+      
+      // @ts-ignore
+      node.timelinePos = new THREE.Vector3(xStart, yPos, 0); // Node sits at start of bar? Or middle?
+      // Let's sit node at the *start* of the experience for now, or maybe centered?
+      // User request: "Ticks on the experience"
+      
+      // Draw Bar
+      const color = getCompanyColor(node.company);
+      const barGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(xStart, yPos - 2, 0), // Offset slightly from node center?
+          new THREE.Vector3(xEnd, yPos - 2, 0)
+      ]);
+      const barMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.8, transparent: true });
+      const bar = new THREE.Line(barGeo, barMat);
+      timelineGroup.add(bar);
+      
+      // Draw Ticks on Experience (Yearly ticks)
+      const expTicks = [];
+      const startYearCeil = Math.ceil(nodeStart);
+      const endYearFloor = Math.floor(nodeEnd);
+      
+      for (let y = startYearCeil; y <= endYearFloor; y++) {
+             const tickX = startX + (y - minYear) * unitPerYear;
+             expTicks.push(tickX, yPos - 1, 0);
+             expTicks.push(tickX, yPos - 3, 0);
+      }
+      
+      if (expTicks.length > 0) {
+          const expTicksGeo = new THREE.BufferGeometry();
+          expTicksGeo.setAttribute('position', new THREE.Float32BufferAttribute(expTicks, 3));
+          const expTicksMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.5, transparent: true });
+          const expTicksLines = new THREE.LineSegments(expTicksGeo, expTicksMat);
+          timelineGroup.add(expTicksLines);
       }
   });
 }
+
 
 function onWindowResize() {
   if (!container.value || !camera || !renderer) return;
@@ -457,7 +585,7 @@ function animate() {
   }
   
   // Update Labels
-  updateNodeLabels();
+
   
   // Foreground rotation - REMOVED random tumbling
   // But maybe we want slight global drift?
@@ -486,9 +614,15 @@ function animate() {
          maxZreq = 100; // Zoom in for detail
      } else {
          // Overview of timeline
-         targetPos.set(0, -10, 0); 
+         targetPos.set(0, 0, 0); 
          maxZreq = 180;
      }
+     
+     // Prevent camera from going too far off sideways
+     // Clamp focus X to timeline range approx
+     const clampRange = 100; // units
+     if (targetPos.x < -clampRange) targetPos.x = -clampRange;
+     if (targetPos.x > clampRange) targetPos.x = clampRange;
   } else {
       // GRAPH VIEW CAMERA LOGIC (Fit All)
       const fov = camera.fov * (Math.PI / 180);
@@ -524,6 +658,13 @@ function animate() {
   // Look at target (smoothly)
   currentFocus.lerp(targetPos, alpha);
   camera.lookAt(currentFocus);
+  
+  // Ensure matrices are up to date for projection
+  camera.updateMatrixWorld();
+  camera.updateProjectionMatrix();
+
+  // Update Labels (After camera move to prevent lag)
+  updateNodeLabels();
   
   if (selectedStar) updateOverlayPosition();
 
@@ -577,6 +718,21 @@ onUnmounted(() => {
             left: label.x + 'px', 
             top: label.y + 'px', 
             opacity: label.visible ? 0.7 : 0 
+        }"
+    >
+        {{ label.text }}
+    </div>
+    
+    <!-- Timeline Labels (Years) -->
+    <div
+        v-if="isTimelineView"
+        v-for="label in timelineLabels"
+        :key="label.id"
+        class="timeline-label"
+        :style="{
+            left: label.x + 'px',
+            top: label.y + 'px',
+            opacity: label.visible ? 0.5 : 0
         }"
     >
         {{ label.text }}
