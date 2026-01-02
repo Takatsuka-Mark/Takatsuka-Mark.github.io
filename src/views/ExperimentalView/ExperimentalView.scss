@@ -155,9 +155,12 @@
     color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
     letter-spacing: 0.5rem;
-    z-index: 5;
-    pointer-events: none;
+    z-index: 20;
+    /* Increased to allow interaction */
+    pointer-events: auto;
+    /* Allow clicks */
     text-shadow: 0 0 20px rgba(64, 201, 255, 0.3);
+    cursor: pointer;
 }
 
 .node-label {
