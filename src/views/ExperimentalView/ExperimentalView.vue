@@ -127,7 +127,7 @@ const colorPalette = [
 
 function getCompanyColor(company: string): number {
     const idx = Math.abs(checksum(company)) % colorPalette.length;
-    return colorPalette[idx];
+    return colorPalette[idx] || 0xffffff;
 }
 
 
@@ -173,7 +173,8 @@ function initThree() {
 
   createBackground();
   createForeground();
-  createTimeline(); // New
+  createClusterHitZones(); // New: Hit zones
+  createTimeline(); 
   
   // Start loop
   animate();
@@ -190,7 +191,7 @@ const isBackgroundMoving = ref(true);
 const isTimelineView = ref(false);
 let timelineGroup: THREE.Group;
 
-// New: Navigation State
+// Navigation State
 const activeCluster = ref<ClusterType | null>(null);
 
 function navigateToCluster(clusterId: ClusterType | null) {
@@ -201,62 +202,73 @@ function navigateToCluster(clusterId: ClusterType | null) {
     }
 }
 
-// Cluster Labels (3D -> 2D)
+// Cluster Labels
 interface ClusterLabel {
     id: ClusterType;
     text: string;
     x: number;
     y: number;
     visible: boolean;
-    scale: number; // For scaling effect tailored to distance
+    scale: number;
 }
 const clusterLabels = ref<ClusterLabel[]>([]);
 
-// Watch mode switch to handle one-time state changes
+// Watch mode switch
 watch(isTimelineView, (newVal) => {
   if (newVal) {
-    // Switch TO Timeline
-    if (simulation) simulation.stop(); // Stop completely so D3 doesn't fight
-    
-    // Show Timeline visuals
+    if (simulation) simulation.stop();
     if (timelineGroup) timelineGroup.visible = true;
-    
-    // Hide Graph connections
     const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
     if (lineLayer) lineLayer.visible = false;
-    
-    // Force experience cluster active implicitly? Or just ignore activeCluster in camera logic
-    navigateToCluster('experience'); // Keep it simple
-
+    navigateToCluster('experience');
   } else {
-    // Switch TO Graph
-    // Randomize velocity to break the line structure naturally, but don't teleport positions
     nodes.forEach(node => {
-        // Kick them!
         node.vx = (Math.random() - 0.5) * 5;
         node.vy = (Math.random() - 0.5) * 5;
         node.vz = (Math.random() - 0.5) * 5;
     });
-
-    // Restart simulation to let nodes float back
-    if (simulation) {
-        simulation.alpha(1).restart();
-    }
-    
-    // Hide Timeline visuals
+    if (simulation) simulation.alpha(1).restart();
     if (timelineGroup) timelineGroup.visible = false;
-    
-    // Show Graph connections
     const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
     if (lineLayer) lineLayer.visible = true;
-    
-    // Go to Overview
     navigateToCluster(null);
   }
 });
 
+// Hit Zones
+let hitZoneGroup: THREE.Group;
 
-// Interaction
+function createClusterHitZones() {
+    hitZoneGroup = new THREE.Group();
+    scene.add(hitZoneGroup);
+
+    (Object.keys(CLUSTER_CONFIG) as ClusterType[]).forEach(type => {
+        const config = CLUSTER_CONFIG[type];
+        
+        // Size depends on cluster spread. 
+        // We used random * 50 for nodes, so radius 40-50 is good.
+        // Experience is central, maybe larger?
+        const radius = type === 'experience' ? 60 : 45;
+        
+        const geometry = new THREE.SphereGeometry(radius, 16, 16);
+        const material = new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0, // Invisible but clickable
+            side: THREE.BackSide // Render inside too? Or Front is fine. DoubleSide just in case
+        });
+        material.depthWrite = false; // Don't block stars visuals
+        
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(config.position);
+        // @ts-ignore
+        sphere.userData = { isHitZone: true, cluster: type };
+        
+        hitZoneGroup.add(sphere);
+    });
+}
+
+// Interaction Variables
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const targetFocus = new THREE.Vector3(0, 0, 0);
@@ -289,10 +301,6 @@ function updateNodeLabels() {
 
   // Update Node Labels
   nodes.forEach((node, i) => {
-    // Show labels only for the ACTIVE cluster to avoid clutter
-    // Or for all? "When I enter... I want each of these clusters to be shown with their heading."
-    // User wants Cluster Headers. Node labels are separate.
-    // Show node labels ONLY if we are zoomed in (activeCluster is not null) AND node belongs to activeCluster
     const shouldShow = activeCluster.value !== null && node.cluster === activeCluster.value;
     
     if (!shouldShow) {
@@ -300,7 +308,6 @@ function updateNodeLabels() {
         return;
     }
 
-    // node is the d3 simulation node which holds x,y,z
     const mesh = foregroundGroup.children.filter(c => c instanceof THREE.Mesh)[i];
     if (!mesh) return;
 
@@ -318,7 +325,7 @@ function updateNodeLabels() {
       const label = nodeLabels.value[i]; 
       if (label) {
         label.x = x;
-        label.y = y - 30; // Shift up slightly
+        label.y = y - 30; 
         label.visible = true;
       }
     } else {
@@ -330,28 +337,15 @@ function updateNodeLabels() {
   clusterLabels.value = (Object.keys(CLUSTER_CONFIG) as ClusterType[]).map(type => {
       const config = CLUSTER_CONFIG[type];
       tempVec.copy(config.position);
-      
-      // We want the label to appear 'above' the cluster
       tempVec.y += 20; 
-      
       tempVec.project(camera);
-      
       const isVisible = tempVec.z < 1 && tempVec.z > -1; 
       
       if (isVisible) {
           const x = (tempVec.x * .5 + .5) * width;
           const y = (-(tempVec.y * .5) + .5) * height;
-          
-          // Scale based on distance (pseudo)
           const scale = Math.max(0.5, 1 - (tempVec.z * 0.5)); 
-          
-          return {
-              id: type,
-              text: config.label,
-              x, y,
-              visible: true,
-              scale
-          };
+          return { id: type, text: config.label, x, y, visible: true, scale };
       } else {
            return { id: type, text: config.label, x: 0, y: 0, visible: false, scale: 1 };
       }
@@ -360,14 +354,11 @@ function updateNodeLabels() {
   // Update Timeline Labels
   if (isTimelineView.value) {
       timelineLabels.value.forEach(label => {
-          // Use stored worldPos
           tempVec.copy(label.worldPos);
           tempVec.project(camera);
-          
           const isVisible = tempVec.z < 1 && tempVec.z > -1 
                           && tempVec.x >= -1 && tempVec.x <= 1
                           && tempVec.y >= -1 && tempVec.y <= 1;
-                          
           if (isVisible) {
               label.x = (tempVec.x * .5 + .5) * width;
               label.y = (-(tempVec.y * .5) + .5) * height;
@@ -387,17 +378,53 @@ function onClick(event: MouseEvent) {
 
   raycaster.setFromCamera(mouse, camera);
 
+  // 1. Check Stars (Foreground) - Highest Priority
   // Intersect with stars (meshes only, ignore lines)
   const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
   const intersects = raycaster.intersectObjects(meshes);
 
   if (intersects.length > 0) {
-    selectedStar = intersects[0].object;
+    const clickedStar = intersects[0].object;
     // @ts-ignore
-    selectedExperience.value = selectedStar.userData; // userData is the full Experience object
+    const clickedData = clickedStar.userData;
+    
+    // Logic: If overview, nav. If background, nav. If active, select.
+    if (activeCluster.value === null || activeCluster.value !== clickedData.cluster) {
+        navigateToCluster(clickedData.cluster);
+    } else {
+        selectedStar = clickedStar;
+        // @ts-ignore
+        selectedExperience.value = clickedData;
+    }
   } else {
-    selectedStar = null;
-    selectedExperience.value = null;
+      // 2. Check Hit Zones (Background Areas)
+     const hitZones = hitZoneGroup.children;
+     const zoneIntersects = raycaster.intersectObjects(hitZones);
+     
+     if (zoneIntersects.length > 0) {
+         // Sort by distance (done by intersectObjects), but maybe we want specific logic?
+         // The closest sphere is arguably the one we want.
+         const hit = zoneIntersects[0].object;
+         // @ts-ignore
+         const targetCluster = hit.userData.cluster;
+         
+         if (activeCluster.value !== targetCluster) {
+             navigateToCluster(targetCluster);
+         } else {
+             // Already in this cluster, clicked empty space -> clear selection
+             selectedExperience.value = null;
+             selectedStar = null;
+         }
+     } else {
+        // Clicked void: Return to Overview if currently in a cluster
+        if (activeCluster.value !== null) {
+            navigateToCluster(null);
+        } else {
+             // In overview, clicked void -> clear any potential selection
+             selectedExperience.value = null;
+             selectedStar = null;
+        }
+     }
   }
 }
 
@@ -463,9 +490,9 @@ function createForeground() {
     .force('charge', forceManyBody().strength(-50)) // Reduced repulsion to keep clusters tight
     .force('collide', forceCollide(8))
     // Cluster positioning forces
-    .force('x', forceX((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType].position.x).strength(0.1))
-    .force('y', forceY((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType].position.y).strength(0.1))
-    .force('z', forceZ((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType].position.z).strength(0.1));
+    .force('x', forceX((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.x || 0).strength(0.1))
+    .force('y', forceY((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.y || 0).strength(0.1))
+    .force('z', forceZ((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.z || 0).strength(0.1));
 
   // Create Meshes
   nodes.forEach((node) => {
@@ -803,7 +830,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Timeline Toggle (Only show if in Experience or Overview?) -->
-    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView" v-if="activeCluster === 'experience' || !activeCluster">
+    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView" v-if="(activeCluster === 'experience' || !activeCluster) && false">
         {{ isTimelineView ? 'SHOW GRAPH' : 'SHOW TIMELINE' }}
     </div>
 
