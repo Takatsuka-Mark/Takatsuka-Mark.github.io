@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import * as THREE from 'three';
 import type { Experience } from '../../data/experiences';
 import { experiences, education } from '../../data/experiences';
+// @ts-ignore
+import { forceSimulation, forceManyBody, forceCenter, forceCollide, forceLink } from 'd3-force-3d';
 
 const container = ref<HTMLElement | null>(null);
 
 // Join experiences and education
-const allNodesData = [...experiences, ...education];
+const allNodesData = [...experiences].reverse().map((d, i) => ({ ...d, id: i }));
 
 // Three.js variables
 let scene: THREE.Scene;
@@ -18,16 +20,74 @@ let backgroundStars: THREE.Points;
 let foregroundGroup: THREE.Group;
 
 // Config
-const BG_STAR_COUNT = 1500;
-const NODE_RADIUS = 30; // Spread of foreground nodes
+const BG_STAR_COUNT = 15000; // Increased 10x
+const NODE_RADIUS = 30; 
+
+// D3 Simulation variables
+let simulation: any;
+let nodes: any[] = [];
+let links: any[] = [];
+
+// Node Labels
+interface NodeLabel {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}
+const nodeLabels = ref<NodeLabel[]>([]);
+
+interface TimelineLabel {
+  id: string;
+  text: string;
+  x: number;
+  y: number; // screen y
+  worldPos: THREE.Vector3;
+  visible: boolean;
+}
+const timelineLabels = ref<TimelineLabel[]>([]);
+
+// Color Palette Helper
+function checksum(s: string): number {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+        hash = (hash << 5) - hash + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
+}
+
+const colorPalette = [
+    0x40c9ff, // Cyan
+    0xff5555, // Red
+    0x55ff55, // Green
+    0xffaa00, // Orange
+    0xaa55ff, // Purple
+    0xff55aa  // Pink
+];
+
+function getCompanyColor(company: string): number {
+    const idx = Math.abs(checksum(company)) % colorPalette.length;
+    return colorPalette[idx];
+}
+
 
 // Initialize Three.js
 function initThree() {
   if (!container.value) return;
 
+  // Init labels
+  nodeLabels.value = allNodesData.map(d => ({
+    id: typeof d.id === 'number' ? d.id : 0, // Ensure ID
+    text: d.company,
+    x: 0,
+    y: 0,
+    visible: false
+  }));
+
   // Scene
   scene = new THREE.Scene();
-  // Optional: distinct background color or fog
   scene.background = new THREE.Color(0x050510); // Deep space blue/black
   scene.fog = new THREE.FogExp2(0x050510, 0.002);
 
@@ -46,7 +106,7 @@ function initThree() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.value.appendChild(renderer.domElement);
 
-  // Lighting (for meshes)
+  // Lighting
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
   const pointLight = new THREE.PointLight(0xffffff, 1);
@@ -55,6 +115,7 @@ function initThree() {
 
   createBackground();
   createForeground();
+  createTimeline(); // New
   
   // Start loop
   animate();
@@ -67,6 +128,49 @@ function initThree() {
 const selectedExperience = ref<Experience | null>(null);
 const overlayPos = ref({ x: 0, y: 0 });
 const showIntro = ref(true);
+const isBackgroundMoving = ref(true);
+const isTimelineView = ref(false);
+let timelineGroup: THREE.Group;
+
+
+
+// Watch mode switch to handle one-time state changes
+watch(isTimelineView, (newVal) => {
+  if (newVal) {
+    // Switch TO Timeline
+    if (simulation) simulation.stop(); // Stop completely so D3 doesn't fight
+    
+    // Show Timeline visuals
+    if (timelineGroup) timelineGroup.visible = true;
+    
+    // Hide Graph connections
+    const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+    if (lineLayer) lineLayer.visible = false;
+
+  } else {
+    // Switch TO Graph
+    // Randomize velocity to break the line structure naturally, but don't teleport positions
+    nodes.forEach(node => {
+        // Kick them!
+        node.vx = (Math.random() - 0.5) * 5;
+        node.vy = (Math.random() - 0.5) * 5;
+        node.vz = (Math.random() - 0.5) * 5;
+    });
+
+    // Restart simulation to let nodes float back
+    if (simulation) {
+        simulation.alpha(1).restart();
+    }
+    
+    // Hide Timeline visuals
+    if (timelineGroup) timelineGroup.visible = false;
+    
+    // Show Graph connections
+    const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+    if (lineLayer) lineLayer.visible = true;
+  }
+});
+
 
 // Interaction
 const raycaster = new THREE.Raycaster();
@@ -87,18 +191,78 @@ function updateOverlayPosition() {
   tempVec.project(camera);
   
   // Convert to pixel coordinates
-  // Move it slightly to the right/top of the star
   const x = (tempVec.x * .5 + .5) * container.value.clientWidth;
   const y = (-(tempVec.y * .5) + .5) * container.value.clientHeight;
   
   overlayPos.value = { x, y };
 }
 
+function updateNodeLabels() {
+  if (!container.value || nodes.length === 0) return;
+
+  const width = container.value.clientWidth;
+  const height = container.value.clientHeight;
+
+  nodes.forEach((node, i) => {
+    // node is the d3 simulation node which holds x,y,z
+    // We can use the mesh position directly if we want, or the node pos. 
+    // They are synced in animate() before this call usually.
+    // Let's use the mesh position to be safe if we add offsets later
+    const mesh = foregroundGroup.children.filter(c => c instanceof THREE.Mesh)[i];
+    if (!mesh) return;
+
+    mesh.getWorldPosition(tempVec);
+    
+    // Check if behind camera
+    // Project method will return z > 1 if outside frustum in NDC z? 
+    // Actually project transforms vector to NDC. 
+    // z range is -1 to 1 for inside frustum (OpenGL style)
+    tempVec.project(camera);
+
+    const isVisible = tempVec.z < 1 && tempVec.z > -1 
+                      && tempVec.x >= -1 && tempVec.x <= 1
+                      && tempVec.y >= -1 && tempVec.y <= 1;
+
+    if (isVisible) {
+      const x = (tempVec.x * .5 + .5) * width;
+      const y = (-(tempVec.y * .5) + .5) * height;
+      
+      const label = nodeLabels.value[i]; 
+      if (label) {
+        label.x = x;
+        label.y = y - 30; // Shift up slightly
+        label.visible = true;
+      }
+    } else {
+       if (nodeLabels.value[i]) nodeLabels.value[i].visible = false;
+    }
+  });
+  
+  // Update Timeline Labels
+  if (isTimelineView.value) {
+      timelineLabels.value.forEach(label => {
+          // Use stored worldPos
+          tempVec.copy(label.worldPos);
+          tempVec.project(camera);
+          
+          const isVisible = tempVec.z < 1 && tempVec.z > -1 
+                          && tempVec.x >= -1 && tempVec.x <= 1
+                          && tempVec.y >= -1 && tempVec.y <= 1;
+                          
+          if (isVisible) {
+              label.x = (tempVec.x * .5 + .5) * width;
+              label.y = (-(tempVec.y * .5) + .5) * height;
+              label.visible = true;
+          } else {
+              label.visible = false;
+          }
+      });
+  }
+}
+
 function onClick(event: MouseEvent) {
   if (!container.value) return;
 
-  // Calculate mouse position in normalized device coordinates
-  // (-1 to +1) for both components
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -110,10 +274,9 @@ function onClick(event: MouseEvent) {
 
   if (intersects.length > 0) {
     selectedStar = intersects[0].object;
-    selectedExperience.value = selectedStar.userData as Experience;
-    console.log('Clicked experience:', selectedStar.userData);
+    // @ts-ignore
+    selectedExperience.value = selectedStar.userData; // userData is the full Experience object
   } else {
-    // Clicked void - deselect
     selectedStar = null;
     selectedExperience.value = null;
   }
@@ -148,81 +311,204 @@ function createForeground() {
   foregroundGroup = new THREE.Group();
   scene.add(foregroundGroup);
 
-  allNodesData.forEach((data, index) => {
-    // Create a mesh for each experience
-    // Using a simple sphere for now as "star" representation
+  // Init nodes with random positions
+  nodes = allNodesData.map(d => ({
+    ...d,
+    x: Math.random() * 50 - 25,
+    y: Math.random() * 50 - 25,
+    z: Math.random() * 50 - 25,
+    vx: 0, vy: 0, vz: 0
+  }));
+
+  // Create links (Chronological chain)
+  links = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    links.push({ source: nodes[i].id, target: nodes[i+1].id });
+  }
+
+  // Setup Simulation
+  simulation = forceSimulation()
+    .numDimensions(3)
+    .nodes(nodes)
+    .force('link', forceLink(links).id((d: any) => d.id).distance(25)) // Reduced distance to keep graph tighter
+    .force('charge', forceManyBody().strength(-100)) // Repulsion
+    .force('center', forceCenter(0, 0, 0))
+    .force('collide', forceCollide(10)); // Prevent overlapping nodes
+
+  // Create Meshes
+  nodes.forEach((node) => {
     const geometry = new THREE.SphereGeometry(1.5, 16, 16);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x40c9ff, // Cyan-ish star
+      color: getCompanyColor(node.company),
       emissive: 0x004080,
       emissiveIntensity: 0.5,
       roughness: 0.2,
       metalness: 0.8
     });
     
+    // @ts-ignore
     const star = new THREE.Mesh(geometry, material);
-    
-    // Position randomly within a central cluster
-    const r = NODE_RADIUS;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos((Math.random() * 2) - 1);
-    
-    const x = r * Math.sin(phi) * Math.cos(theta);
-    const y = r * Math.sin(phi) * Math.sin(theta);
-    const z = r * Math.cos(phi);
-    
-    star.position.set(x, y, z);
-    
-    // Store metadata on the mesh for later (Phase 4/5)
-    star.userData = { ...data, id: index };
-    
+    star.userData = node; // Link mesh back to data
     foregroundGroup.add(star);
   });
 
-  createConnections();
-}
-
-function createConnections() {
-  if (foregroundGroup.children.length < 2) return;
-
-  const stars = foregroundGroup.children as THREE.Mesh[];
-  const positions: number[] = [];
+  // Create Lines (visuals)
+  // We'll update their positions in animate()
+  // Just create a LineSegments object that will hold all lines
+  const geometry = new THREE.BufferGeometry();
+  // Allocate enough buffer for links
+  const positions = new Float32Array(links.length * 6); // 2 points * 3 coords
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0x40c9ff,
     transparent: true,
     opacity: 0.2
   });
-
-  // Calculate nearest neighbors
-  // For each star, find closest 1-2 neighbors
-  stars.forEach((star, i) => {
-    const starPos = star.position;
-    
-    // Sort other stars by distance
-    const others = stars.map((other, j) => {
-      if (i === j) return { index: -1, distance: Infinity };
-      return { index: j, distance: starPos.distanceTo(other.position) };
-    }).filter(item => item.index !== -1);
-
-    others.sort((a, b) => a.distance - b.distance);
-
-    // Connect to closest 1 or 2
-    const numConnections = Math.min(others.length, 2); 
-    for (let k = 0; k < numConnections; k++) {
-      const neighbor = stars[others[k].index];
-      
-      // Add pair of vertices
-      positions.push(starPos.x, starPos.y, starPos.z);
-      positions.push(neighbor.position.x, neighbor.position.y, neighbor.position.z);
-    }
-  });
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   
-  const lines = new THREE.LineSegments(geometry, lineMaterial);
-  foregroundGroup.add(lines);
+  const lineSegments = new THREE.LineSegments(geometry, lineMaterial);
+  // @ts-ignore
+  lineSegments.userData = { isLineLayer: true };
+  foregroundGroup.add(lineSegments);
 }
+
+function createTimeline() {
+  timelineGroup = new THREE.Group();
+  scene.add(timelineGroup);
+  timelineGroup.visible = false; // Hidden by default
+
+  // Calculate Range
+  const startDates = nodes.map(n => n.startDate).filter((d): d is number => d !== undefined);
+  const endDates = nodes.map(n => n.endDate).filter((d): d is number => d !== undefined);
+  
+  if (startDates.length === 0) return; // Should not happen with valid data
+  
+  // Add some padding
+  const minYear = Math.floor(Math.min(...startDates));
+  const maxYear = Math.ceil(Math.max(...endDates));
+  
+  const unitPerYear = 30; // Scale
+  
+  // Adjust bounds relative to a center point or just start from left?
+  // Let's center the whole timeline around 0
+  const range = maxYear - minYear;
+  const startX = -(range * unitPerYear) / 2;
+  
+  // 1. Main Axis Line
+  const totalWidth = range * unitPerYear;
+  
+  const axisGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(startX, -15, 0),
+      new THREE.Vector3(startX + totalWidth, -15, 0)
+  ]);
+  const axisMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true });
+  const axis = new THREE.Line(axisGeo, axisMat);
+  timelineGroup.add(axis);
+
+  // 2. Axis Ticks & Labels (Years)
+  const axisTicks = [];
+  timelineLabels.value = [];
+  
+  for (let y = minYear; y <= maxYear; y++) {
+      const x = startX + (y - minYear) * unitPerYear;
+      axisTicks.push(x, -15, 0);
+      axisTicks.push(x, -18, 0); // Tick down
+      
+      // Store label info
+      timelineLabels.value.push({
+          id: `year-${y}`,
+          text: y.toString(),
+          x: 0,
+          y: 0,
+          worldPos: new THREE.Vector3(x, -25, 0),
+          visible: false
+      });
+  }
+  
+  const axisTicksGeo = new THREE.BufferGeometry();
+  axisTicksGeo.setAttribute('position', new THREE.Float32BufferAttribute(axisTicks, 3));
+  const axisTicksLines = new THREE.LineSegments(axisTicksGeo, axisMat);
+  timelineGroup.add(axisTicksLines);
+
+  // 3. Experience Bars (Stacked)
+  // Sort nodes by startDate
+  const sortedNodes = [...nodes].sort((a, b) => (a.startDate || 0) - (b.startDate || 0));
+  
+  // Lanes logic
+  const lanes: number[] = []; // Stores the endDate of the last item in each lane
+  const laneHeight = 10;
+  const baseHeight = -5; // Start slightly above axis
+  
+  sortedNodes.forEach(node => {
+      if (node.startDate === undefined) {
+           // Fallback for non-dated nodes
+           // @ts-ignore
+           node.timelinePos = new THREE.Vector3(0, 50, 0);
+           return;
+      }
+      
+      const nodeStart = node.startDate;
+      // @ts-ignore
+      const nodeEnd = node.endDate || node.startDate + 0.5; // fallback duration
+      
+      // Find a lane
+      let laneIndex = -1;
+      for (let i = 0; i < lanes.length; i++) {
+          if (lanes[i] < nodeStart) {
+              laneIndex = i;
+              break;
+          }
+      }
+      
+      if (laneIndex === -1) {
+          laneIndex = lanes.length;
+          lanes.push(0);
+      }
+      
+      // Update lane
+      lanes[laneIndex] = nodeEnd;
+      
+      // Calculate Position
+      const xStart = startX + (nodeStart - minYear) * unitPerYear;
+      const xEnd = startX + (nodeEnd - minYear) * unitPerYear;
+      const yPos = baseHeight + (laneIndex * laneHeight);
+      
+      // @ts-ignore
+      node.timelinePos = new THREE.Vector3(xStart, yPos, 0); // Node sits at start of bar? Or middle?
+      // Let's sit node at the *start* of the experience for now, or maybe centered?
+      // User request: "Ticks on the experience"
+      
+      // Draw Bar
+      const color = getCompanyColor(node.company);
+      const barGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(xStart, yPos - 2, 0), // Offset slightly from node center?
+          new THREE.Vector3(xEnd, yPos - 2, 0)
+      ]);
+      const barMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.8, transparent: true });
+      const bar = new THREE.Line(barGeo, barMat);
+      timelineGroup.add(bar);
+      
+      // Draw Ticks on Experience (Yearly ticks)
+      const expTicks = [];
+      const startYearCeil = Math.ceil(nodeStart);
+      const endYearFloor = Math.floor(nodeEnd);
+      
+      for (let y = startYearCeil; y <= endYearFloor; y++) {
+             const tickX = startX + (y - minYear) * unitPerYear;
+             expTicks.push(tickX, yPos - 1, 0);
+             expTicks.push(tickX, yPos - 3, 0);
+      }
+      
+      if (expTicks.length > 0) {
+          const expTicksGeo = new THREE.BufferGeometry();
+          expTicksGeo.setAttribute('position', new THREE.Float32BufferAttribute(expTicks, 3));
+          const expTicksMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.5, transparent: true });
+          const expTicksLines = new THREE.LineSegments(expTicksGeo, expTicksMat);
+          timelineGroup.add(expTicksLines);
+      }
+  });
+}
+
 
 function onWindowResize() {
   if (!container.value || !camera || !renderer) return;
@@ -234,37 +520,156 @@ function onWindowResize() {
 
 function animate() {
   animationId = requestAnimationFrame(animate);
+
+  // Run simulation tick (optional: could run only N times, but continuous is smooth)
+  // simulation.tick(); // d3-force usually ticks automatically if not stopped, 
+  // but usually we just read x/y/z. forceSimulation starts automatically.
+
+  // Update Node Meshes
+  const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
+  meshes.forEach((mesh, i) => {
+     // nodes[i] matches meshes[i] order if we created them in order
+     // Double check data ID if unsure, but sequential creation is safe here
+     const node = nodes[i]; 
+     
+     if (isTimelineView.value) {
+         // Lerp to timeline position
+         // @ts-ignore
+         if (node.timelinePos) {
+             // We modify the node.x/y/z directly so the camera logic still works naturally?
+             // Or better, modify smooth target.
+             // Implem: lerp node position directly here, simulation OFF
+             const lerpSpeed = 0.04; // Slower transition
+             node.x += (node.timelinePos.x - node.x) * lerpSpeed;
+             node.y += (node.timelinePos.y - node.y) * lerpSpeed;
+            node.z += (node.timelinePos.z - node.z) * lerpSpeed;
+            
+            // Sync mesh exactly to node (since node is already lerping)
+            mesh.position.set(node.x, node.y, node.z);
+        }
+    } else {
+        // Simulation ON
+        // Apply visual smoothing so it matches the enter speed feeling
+        const lerpSpeed = 0.04;
+        mesh.position.x += (node.x - mesh.position.x) * lerpSpeed;
+        mesh.position.y += (node.y - mesh.position.y) * lerpSpeed;
+        mesh.position.z += (node.z - mesh.position.z) * lerpSpeed;
+    }
+    // mesh.position.set(node.x, node.y, node.z); // Removed strict set
+ });
   
-  // Subtle rotation of the entire universe or clusters
-  if (backgroundStars) {
-    backgroundStars.rotation.y += 0.00005;
+
+
+
+  // Update Links
+  const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
+  if (lineLayer && lineLayer.geometry && lineLayer.geometry.attributes.position) {
+      const positions = lineLayer.geometry.attributes.position.array as Float32Array;
+      links.forEach((link, i) => {
+          // d3-force replaces source/target with object references after init
+          const source = link.source; 
+          const target = link.target;
+          
+          positions[i * 6 + 0] = source.x;
+          positions[i * 6 + 1] = source.y;
+          positions[i * 6 + 2] = source.z;
+          
+          positions[i * 6 + 3] = target.x;
+          positions[i * 6 + 4] = target.y;
+          positions[i * 6 + 5] = target.z;
+      });
+      lineLayer.geometry.attributes.position.needsUpdate = true;
   }
   
-  if (foregroundGroup) {
-    foregroundGroup.rotation.y += 0.0002;
-    foregroundGroup.rotation.x += 0.0001;
+  // Background rotation
+  if (backgroundStars && isBackgroundMoving.value) {
+    backgroundStars.rotation.y += 0.00005; // Keep this subtle
   }
+  
+  // Update Labels
+
+  
+  // Foreground rotation - REMOVED random tumbling
+  // But maybe we want slight global drift?
+  // foregroundGroup.rotation.y += 0.0002; 
   
   // Camera focus logic
-  if (selectedStar) {
-    // Project for overlay (modifies tempVec internally)
-    updateOverlayPosition();
-    
-    // Get fresh world position for focus logic
-    selectedStar.getWorldPosition(tempVec);
-    
-    // Clamp: Look 80% of the way towards the star
-    // This centers it more but keeps context
-    tempVec.multiplyScalar(0.8); 
-    targetFocus.copy(tempVec);
-  } else {
-     // Optional: drift back to center
-     // targetFocus.set(0, 0, 0);
-  }
+  const targetPos = selectedStar ? selectedStar.position : new THREE.Vector3(0, 0, 0);
+  
+  // 1. Determine optimal camera Z to keep all nodes in view relative to targetPos
+  // We align camera X/Y with targetPos X/Y so it's centered
+  let maxZreq = 100; // Minimum distance
+  
+  const fov = camera.fov * (Math.PI / 180);
+  const aspect = camera.aspect;
+  // tan(fov/2) is the ratio of half-height to distance
+  const tanFov2 = Math.tan(fov / 2);
+  
+  // 1. Determine optimal camera Z
+  maxZreq = 100;
 
-  currentFocus.lerp(targetFocus, 0.05);
+  if (isTimelineView.value) {
+     // TIMELINE VIEW CAMERA LOGIC
+     if (selectedStar) {
+         // Focus on selected node
+         targetPos.copy(selectedStar.position);
+         maxZreq = 100; // Zoom in for detail
+     } else {
+         // Overview of timeline
+         targetPos.set(0, 0, 0); 
+         maxZreq = 180;
+     }
+     
+     // Prevent camera from going too far off sideways
+     // Clamp focus X to timeline range approx
+     const clampRange = 100; // units
+     if (targetPos.x < -clampRange) targetPos.x = -clampRange;
+     if (targetPos.x > clampRange) targetPos.x = clampRange;
+  } else {
+      // GRAPH VIEW CAMERA LOGIC (Fit All)
+      const fov = camera.fov * (Math.PI / 180);
+      const aspect = camera.aspect;
+      const tanFov2 = Math.tan(fov / 2);
+      
+      nodes.forEach(node => {
+         const dx = Math.abs(node.x - targetPos.x);
+         const dy = Math.abs(node.y - targetPos.y);
+         const margin = 20;
+         
+         const zReqY = node.z + (dy + margin) / tanFov2;
+         const zReqX = node.z + (dx + margin) / (tanFov2 * aspect);
+         
+         maxZreq = Math.max(maxZreq, zReqY, zReqX);
+      });
+      // Clamping strictness
+      maxZreq = Math.min(maxZreq, 400); 
+  }
+ 
+
+  // Smoothly move camera
+  // Target position is (target.x, target.y, calculated_Z)
+  // Target LookAt is (target.x, target.y, target.z)
+  
+  const currentCamPos = camera.position;
+  const desiredCamPos = new THREE.Vector3(targetPos.x, targetPos.y, maxZreq);
+  
+  // Lerp factor
+  const alpha = 0.05;
+  currentCamPos.lerp(desiredCamPos, alpha);
+  
+  // Look at target (smoothly)
+  currentFocus.lerp(targetPos, alpha);
   camera.lookAt(currentFocus);
   
+  // Ensure matrices are up to date for projection
+  camera.updateMatrixWorld();
+  camera.updateProjectionMatrix();
+
+  // Update Labels (After camera move to prevent lag)
+  updateNodeLabels();
+  
+  if (selectedStar) updateOverlayPosition();
+
   renderer.render(scene, camera);
 }
 
@@ -279,19 +684,62 @@ onUnmounted(() => {
   cancelAnimationFrame(animationId);
   window.removeEventListener('resize', onWindowResize);
   
-  // Cleanup Three.js resources
+  if (simulation) simulation.stop();
+
   if (renderer) {
     renderer.dispose();
     if (renderer.domElement && container.value) {
       container.value.removeChild(renderer.domElement);
     }
   }
-  // Dispose geometries/materials... (simplified for now)
 });
 </script>
 
 <template>
   <div class="experimental-container" ref="container">
+    
+    <!-- Page Title -->
+    <div class="page-title">Experience</div>
+
+    <!-- Background Toggle -->
+    <div class="bg-toggle" @click="isBackgroundMoving = !isBackgroundMoving">
+        {{ isBackgroundMoving ? 'PAUSE STARS' : 'PLAY STARS' }}
+    </div>
+
+    <!-- Timeline Toggle -->
+    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView">
+        {{ isTimelineView ? 'SHOW GRAPH' : 'SHOW TIMELINE' }}
+    </div>
+
+    <!-- Node Labels -->
+    <div 
+        v-for="label in nodeLabels" 
+        :key="label.id" 
+        class="node-label"
+        :style="{ 
+            left: label.x + 'px', 
+            top: label.y + 'px', 
+            opacity: label.visible ? 0.7 : 0 
+        }"
+    >
+        {{ label.text }}
+    </div>
+    
+    <!-- Timeline Labels (Years) -->
+    <div
+        v-if="isTimelineView"
+        v-for="label in timelineLabels"
+        :key="label.id"
+        class="timeline-label"
+        :style="{
+            left: label.x + 'px',
+            top: label.y + 'px',
+            opacity: label.visible ? 0.5 : 0
+        }"
+    >
+        {{ label.text }}
+    </div>
+
     <Transition name="fade">
       <div v-if="showIntro" class="intro-overlay">
         <h1 class="intro-text">Experimental V2</h1>
@@ -322,3 +770,30 @@ onUnmounted(() => {
 </template>
 
 <style scoped src="./ExperimentalView.scss" lang="scss"/>
+
+<style scoped>
+.timeline-toggle {
+    position: absolute;
+    top: 5rem; /* Below the PAUSE STARS button */
+    left: 2rem;
+    color: #40c9ff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 20;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(16, 32, 45, 0.6);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+}
+
+.timeline-toggle:hover {
+    background: rgba(64, 201, 255, 0.2);
+    color: #fff;
+    border-color: rgba(64, 201, 255, 0.6);
+}
+</style>

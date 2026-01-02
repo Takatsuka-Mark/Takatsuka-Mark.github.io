@@ -1,4 +1,4 @@
-@import '../../styles/theme';
+@use '../../styles/theme';
 
 .root {
   height: 100%;
@@ -8,8 +8,8 @@
   position: relative;
   flex-grow: 1;
   // 1rem for footer height
-  padding: 5rem $content-padding (
-    $content-padding + 1rem
+  padding: 5rem theme.$content-padding (
+    theme.$content-padding + 1rem
   );
 
 &.full-screen {
@@ -26,7 +26,7 @@
 }
 
 opacity: 0;
-animation: fadeIn $page_fade_in ease forwards $logo_trace_in +$logo_show_time +$logo_fade_out;
+animation: fadeIn theme.$page_fade_in ease forwards theme.$logo_trace_in + theme.$logo_show_time + theme.$logo_fade_out;
 }
 
 @keyframes fadeIn {
@@ -40,7 +40,7 @@ animation: fadeIn $page_fade_in ease forwards $logo_trace_in +$logo_show_time +$
 }
 
 html {
-  animation: lockOverflow $logo_trace_in + $logo_show_time + $logo_fade_out steps(1, end) forwards;
+  animation: lockOverflow theme.$logo_trace_in + theme.$logo_show_time + theme.$logo_fade_out steps(1, end) forwards;
 }
 
 @keyframes lockOverflow {

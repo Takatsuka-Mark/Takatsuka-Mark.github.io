@@ -6,6 +6,8 @@ export interface Experience {
     details?: string[];
     isEducation?: boolean; // To distinguish RIT from jobs if needed, or we can just treat them as "entries"
     link?: string;
+    startDate?: number; // Year as decimal
+    endDate?: number; // Year as decimal
 }
 
 export const experiences: Experience[] = [
@@ -16,7 +18,9 @@ export const experiences: Experience[] = [
         details: [
             'placeholder'
         ],
-        link: 'https://cognitiv.ai'
+        link: 'https://cognitiv.ai',
+        startDate: 2023.83, // Nov 2023
+        endDate: 2025.99 // Current
     },
     {
         company: 'IBM',
@@ -25,7 +29,9 @@ export const experiences: Experience[] = [
         details: [
             'placeholder'
         ],
-        link: 'https://www.ibm.com'
+        link: 'https://www.ibm.com',
+        startDate: 2022.16, // Mar 2022
+        endDate: 2023.75 // Sept 2023
     },
     {
         company: 'IBM',
@@ -34,7 +40,9 @@ export const experiences: Experience[] = [
         details: [
             'placeholder'
         ],
-        link: 'https://www.ibm.com'
+        link: 'https://www.ibm.com',
+        startDate: 2021.33, // May 2021
+        endDate: 2021.66 // Aug 2021
     },
     {
         company: 'SecureCloudDB',
@@ -43,7 +51,9 @@ export const experiences: Experience[] = [
         details: [
             'placeholder'
         ],
-        link: 'https://www.secureclouddb.com'
+        link: 'https://www.secureclouddb.com',
+        startDate: 2020.33, // May 2020
+        endDate: 2020.92 // Dec 2020
     },
 ];
 
@@ -56,6 +66,8 @@ export const education: Experience[] = [
             'Minor in Mathematics',
             'GPA: 3.90'
         ],
-        isEducation: true
+        isEducation: true,
+        startDate: 2018.66, // Aug 2018
+        endDate: 2021.92 // Dec 2021
     }
 ];

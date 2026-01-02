@@ -1,4 +1,4 @@
-@import '../../styles/theme';
+@use '../../styles/theme';
 
 .experimental-container {
     width: 100vw;
@@ -143,4 +143,72 @@
     50% {
         text-shadow: 0 0 40px rgba(255, 64, 201, 0.8);
     }
+}
+
+.page-title {
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 3rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.5rem;
+    z-index: 5;
+    pointer-events: none;
+    text-shadow: 0 0 20px rgba(64, 201, 255, 0.3);
+}
+
+.node-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    color: #40c9ff;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: none;
+    white-space: nowrap;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s ease;
+    z-index: 2;
+}
+
+.bg-toggle {
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    color: #40c9ff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 20;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(16, 32, 45, 0.6);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(64, 201, 255, 0.2);
+        color: #fff;
+        border-color: rgba(64, 201, 255, 0.6);
+    }
+}
+
+.timeline-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 1;
+    font-family: monospace;
 }
