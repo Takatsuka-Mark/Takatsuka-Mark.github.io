@@ -1,15 +1,73 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
 import * as THREE from 'three';
 import type { Experience } from '../../data/experiences';
 import { experiences, education } from '../../data/experiences';
 // @ts-ignore
-import { forceSimulation, forceManyBody, forceCenter, forceCollide, forceLink } from 'd3-force-3d';
+import { forceSimulation, forceManyBody, forceCenter, forceCollide, forceLink, forceX, forceY, forceZ } from 'd3-force-3d';
 
 const container = ref<HTMLElement | null>(null);
 
-// Join experiences and education
-const allNodesData = [...experiences].reverse().map((d, i) => ({ ...d, id: i }));
+// --- Cluster Configuration ---
+type ClusterType = 'experience' | 'education' | 'project' | 'contact';
+
+interface ClusterConfig {
+    id: ClusterType;
+    label: string;
+    position: THREE.Vector3; // center of the cluster in 3D space
+    color: number;
+}
+
+// Layout: Experience (Main) at 0,0,0
+// Others in the "background" (Top Right / Top Left / etc)
+const CLUSTER_CONFIG: Record<ClusterType, ClusterConfig> = {
+    experience: {
+        id: 'experience',
+        label: 'Experience',
+        position: new THREE.Vector3(0, 0, 0),
+        color: 0x40c9ff // Cyan
+    },
+    education: {
+        id: 'education',
+        label: 'Education',
+        position: new THREE.Vector3(80, 50, -50), // Top Right
+        color: 0xffaa00 // Orange
+    },
+    project: {
+        id: 'project',
+        label: 'Projects', // Personal Projects
+        position: new THREE.Vector3(120, 20, -80), // Further Right
+        color: 0x55ff55 // Green
+    },
+    contact: {
+        id: 'contact',
+        label: 'Contact',
+        position: new THREE.Vector3(100, -50, -60), // Bottom Right
+        color: 0xff55aa // Pink
+    }
+};
+
+// --- Data Preparation ---
+// Mock Data for Projects and Contact
+const projectsData: Experience[] = [
+    { company: 'Portfolio V1', title: 'Personal Site', date: '2023', details: ['Previous iteration'], link: '', startDate: 2023, endDate: 2023 },
+    { company: 'Game Engine', title: 'C++ Engine', date: '2022', details: ['Custom OpenGL Engine'], link: '', startDate: 2022, endDate: 2022 },
+    { company: 'AI Agents', title: 'Research', date: '2024', details: ['LLM Experiments'], link: '', startDate: 2024, endDate: 2024 }
+];
+
+const contactData: Experience[] = [
+    { company: 'Email', title: 'takatsuka.mark@gmail.com', date: '', details: ['Contact me'], link: 'mailto:takatsuka.mark@gmail.com' },
+    { company: 'LinkedIn', title: 'Profile', date: '', details: ['Connect'], link: 'https://linkedin.com' },
+    { company: 'GitHub', title: 'Repositories', date: '', details: ['Check my code'], link: 'https://github.com/Takatsuka-Mark' }
+];
+
+// Combine and Assign Cluster IDs
+const allNodesData = [
+    ...experiences.map(d => ({ ...d, cluster: 'experience' as ClusterType })),
+    ...education.map(d => ({ ...d, cluster: 'education' as ClusterType })),
+    ...projectsData.map(d => ({ ...d, cluster: 'project' as ClusterType })),
+    ...contactData.map(d => ({ ...d, cluster: 'contact' as ClusterType }))
+].map((d, i) => ({ ...d, id: i }));
 
 // Three.js variables
 let scene: THREE.Scene;
@@ -69,7 +127,7 @@ const colorPalette = [
 
 function getCompanyColor(company: string): number {
     const idx = Math.abs(checksum(company)) % colorPalette.length;
-    return colorPalette[idx];
+    return colorPalette[idx] || 0xffffff;
 }
 
 
@@ -115,7 +173,8 @@ function initThree() {
 
   createBackground();
   createForeground();
-  createTimeline(); // New
+  createClusterHitZones(); // New: Hit zones
+  createTimeline(); 
   
   // Start loop
   animate();
@@ -132,47 +191,84 @@ const isBackgroundMoving = ref(true);
 const isTimelineView = ref(false);
 let timelineGroup: THREE.Group;
 
+// Navigation State
+const activeCluster = ref<ClusterType | null>(null);
 
+function navigateToCluster(clusterId: ClusterType | null) {
+    activeCluster.value = clusterId;
+    if (clusterId === null) {
+        selectedExperience.value = null; // Clear selection on zoom out
+        selectedStar = null;
+    }
+}
 
-// Watch mode switch to handle one-time state changes
+// Cluster Labels
+interface ClusterLabel {
+    id: ClusterType;
+    text: string;
+    x: number;
+    y: number;
+    visible: boolean;
+    scale: number;
+}
+const clusterLabels = ref<ClusterLabel[]>([]);
+
+// Watch mode switch
 watch(isTimelineView, (newVal) => {
   if (newVal) {
-    // Switch TO Timeline
-    if (simulation) simulation.stop(); // Stop completely so D3 doesn't fight
-    
-    // Show Timeline visuals
+    if (simulation) simulation.stop();
     if (timelineGroup) timelineGroup.visible = true;
-    
-    // Hide Graph connections
     const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
     if (lineLayer) lineLayer.visible = false;
-
+    navigateToCluster('experience');
   } else {
-    // Switch TO Graph
-    // Randomize velocity to break the line structure naturally, but don't teleport positions
     nodes.forEach(node => {
-        // Kick them!
         node.vx = (Math.random() - 0.5) * 5;
         node.vy = (Math.random() - 0.5) * 5;
         node.vz = (Math.random() - 0.5) * 5;
     });
-
-    // Restart simulation to let nodes float back
-    if (simulation) {
-        simulation.alpha(1).restart();
-    }
-    
-    // Hide Timeline visuals
+    if (simulation) simulation.alpha(1).restart();
     if (timelineGroup) timelineGroup.visible = false;
-    
-    // Show Graph connections
     const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
     if (lineLayer) lineLayer.visible = true;
+    navigateToCluster(null);
   }
 });
 
+// Hit Zones
+let hitZoneGroup: THREE.Group;
 
-// Interaction
+function createClusterHitZones() {
+    hitZoneGroup = new THREE.Group();
+    scene.add(hitZoneGroup);
+
+    (Object.keys(CLUSTER_CONFIG) as ClusterType[]).forEach(type => {
+        const config = CLUSTER_CONFIG[type];
+        
+        // Size depends on cluster spread. 
+        // We used random * 50 for nodes, so radius 40-50 is good.
+        // Experience is central, maybe larger?
+        const radius = type === 'experience' ? 60 : 45;
+        
+        const geometry = new THREE.SphereGeometry(radius, 16, 16);
+        const material = new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0, // Invisible but clickable
+            side: THREE.BackSide // Render inside too? Or Front is fine. DoubleSide just in case
+        });
+        material.depthWrite = false; // Don't block stars visuals
+        
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(config.position);
+        // @ts-ignore
+        sphere.userData = { isHitZone: true, cluster: type };
+        
+        hitZoneGroup.add(sphere);
+    });
+}
+
+// Interaction Variables
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const targetFocus = new THREE.Vector3(0, 0, 0);
@@ -203,20 +299,19 @@ function updateNodeLabels() {
   const width = container.value.clientWidth;
   const height = container.value.clientHeight;
 
+  // Update Node Labels
   nodes.forEach((node, i) => {
-    // node is the d3 simulation node which holds x,y,z
-    // We can use the mesh position directly if we want, or the node pos. 
-    // They are synced in animate() before this call usually.
-    // Let's use the mesh position to be safe if we add offsets later
+    const shouldShow = activeCluster.value !== null && node.cluster === activeCluster.value;
+    
+    if (!shouldShow) {
+        if (nodeLabels.value[i]) nodeLabels.value[i].visible = false;
+        return;
+    }
+
     const mesh = foregroundGroup.children.filter(c => c instanceof THREE.Mesh)[i];
     if (!mesh) return;
 
     mesh.getWorldPosition(tempVec);
-    
-    // Check if behind camera
-    // Project method will return z > 1 if outside frustum in NDC z? 
-    // Actually project transforms vector to NDC. 
-    // z range is -1 to 1 for inside frustum (OpenGL style)
     tempVec.project(camera);
 
     const isVisible = tempVec.z < 1 && tempVec.z > -1 
@@ -230,7 +325,7 @@ function updateNodeLabels() {
       const label = nodeLabels.value[i]; 
       if (label) {
         label.x = x;
-        label.y = y - 30; // Shift up slightly
+        label.y = y - 30; 
         label.visible = true;
       }
     } else {
@@ -238,17 +333,32 @@ function updateNodeLabels() {
     }
   });
   
+  // Update Cluster Labels
+  clusterLabels.value = (Object.keys(CLUSTER_CONFIG) as ClusterType[]).map(type => {
+      const config = CLUSTER_CONFIG[type];
+      tempVec.copy(config.position);
+      tempVec.y += 20; 
+      tempVec.project(camera);
+      const isVisible = tempVec.z < 1 && tempVec.z > -1; 
+      
+      if (isVisible) {
+          const x = (tempVec.x * .5 + .5) * width;
+          const y = (-(tempVec.y * .5) + .5) * height;
+          const scale = Math.max(0.5, 1 - (tempVec.z * 0.5)); 
+          return { id: type, text: config.label, x, y, visible: true, scale };
+      } else {
+           return { id: type, text: config.label, x: 0, y: 0, visible: false, scale: 1 };
+      }
+  });
+  
   // Update Timeline Labels
   if (isTimelineView.value) {
       timelineLabels.value.forEach(label => {
-          // Use stored worldPos
           tempVec.copy(label.worldPos);
           tempVec.project(camera);
-          
           const isVisible = tempVec.z < 1 && tempVec.z > -1 
                           && tempVec.x >= -1 && tempVec.x <= 1
                           && tempVec.y >= -1 && tempVec.y <= 1;
-                          
           if (isVisible) {
               label.x = (tempVec.x * .5 + .5) * width;
               label.y = (-(tempVec.y * .5) + .5) * height;
@@ -268,17 +378,53 @@ function onClick(event: MouseEvent) {
 
   raycaster.setFromCamera(mouse, camera);
 
+  // 1. Check Stars (Foreground) - Highest Priority
   // Intersect with stars (meshes only, ignore lines)
   const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
   const intersects = raycaster.intersectObjects(meshes);
 
   if (intersects.length > 0) {
-    selectedStar = intersects[0].object;
+    const clickedStar = intersects[0].object;
     // @ts-ignore
-    selectedExperience.value = selectedStar.userData; // userData is the full Experience object
+    const clickedData = clickedStar.userData;
+    
+    // Logic: If overview, nav. If background, nav. If active, select.
+    if (activeCluster.value === null || activeCluster.value !== clickedData.cluster) {
+        navigateToCluster(clickedData.cluster);
+    } else {
+        selectedStar = clickedStar;
+        // @ts-ignore
+        selectedExperience.value = clickedData;
+    }
   } else {
-    selectedStar = null;
-    selectedExperience.value = null;
+      // 2. Check Hit Zones (Background Areas)
+     const hitZones = hitZoneGroup.children;
+     const zoneIntersects = raycaster.intersectObjects(hitZones);
+     
+     if (zoneIntersects.length > 0) {
+         // Sort by distance (done by intersectObjects), but maybe we want specific logic?
+         // The closest sphere is arguably the one we want.
+         const hit = zoneIntersects[0].object;
+         // @ts-ignore
+         const targetCluster = hit.userData.cluster;
+         
+         if (activeCluster.value !== targetCluster) {
+             navigateToCluster(targetCluster);
+         } else {
+             // Already in this cluster, clicked empty space -> clear selection
+             selectedExperience.value = null;
+             selectedStar = null;
+         }
+     } else {
+        // Clicked void: Return to Overview if currently in a cluster
+        if (activeCluster.value !== null) {
+            navigateToCluster(null);
+        } else {
+             // In overview, clicked void -> clear any potential selection
+             selectedExperience.value = null;
+             selectedStar = null;
+        }
+     }
   }
 }
 
@@ -307,41 +453,60 @@ function createBackground() {
   scene.add(backgroundStars);
 }
 
+// Update Foreground with Multi-Cluster Logic
 function createForeground() {
   foregroundGroup = new THREE.Group();
   scene.add(foregroundGroup);
 
-  // Init nodes with random positions
-  nodes = allNodesData.map(d => ({
-    ...d,
-    x: Math.random() * 50 - 25,
-    y: Math.random() * 50 - 25,
-    z: Math.random() * 50 - 25,
-    vx: 0, vy: 0, vz: 0
-  }));
+  // Init nodes with random positions near their cluster center
+  nodes = allNodesData.map(d => {
+      // @ts-ignore
+      const center = CLUSTER_CONFIG[d.cluster].position;
+      return {
+        ...d,
+        x: center.x + (Math.random() - 0.5) * 50,
+        y: center.y + (Math.random() - 0.5) * 50,
+        z: center.z + (Math.random() - 0.5) * 50,
+        vx: 0, vy: 0, vz: 0
+      };
+  });
 
-  // Create links (Chronological chain)
+  // Create links (Chronological chain WITHIN clusters)
   links = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    links.push({ source: nodes[i].id, target: nodes[i+1].id });
-  }
+  const clusters = ['experience', 'education', 'project', 'contact'];
+  
+  clusters.forEach(clusterId => {
+      const clusterNodes = nodes.filter(n => n.cluster === clusterId);
+      for (let i = 0; i < clusterNodes.length - 1; i++) {
+          links.push({ source: clusterNodes[i].id, target: clusterNodes[i+1].id });
+      }
+  });
 
   // Setup Simulation
   simulation = forceSimulation()
     .numDimensions(3)
     .nodes(nodes)
-    .force('link', forceLink(links).id((d: any) => d.id).distance(25)) // Reduced distance to keep graph tighter
-    .force('charge', forceManyBody().strength(-100)) // Repulsion
-    .force('center', forceCenter(0, 0, 0))
-    .force('collide', forceCollide(10)); // Prevent overlapping nodes
+    .force('link', forceLink(links).id((d: any) => d.id).distance(20))
+    .force('charge', forceManyBody().strength(-50)) // Reduced repulsion to keep clusters tight
+    .force('collide', forceCollide(8))
+    // Cluster positioning forces
+    .force('x', forceX((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.x || 0).strength(0.1))
+    .force('y', forceY((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.y || 0).strength(0.1))
+    .force('z', forceZ((d: any) => CLUSTER_CONFIG[d.cluster as ClusterType]?.position.z || 0).strength(0.1));
 
   // Create Meshes
   nodes.forEach((node) => {
     const geometry = new THREE.SphereGeometry(1.5, 16, 16);
+    // @ts-ignore
+    const color = CLUSTER_CONFIG[node.cluster].color;
+    
+    // Maybe vary slightly based on company hash for texture, but keep base hue?
+    // Let's stick to distinct cluster colors for now as requested.
+    
     const material = new THREE.MeshStandardMaterial({
-      color: getCompanyColor(node.company),
+      color: color,
       emissive: 0x004080,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.2,
       roughness: 0.2,
       metalness: 0.8
     });
@@ -353,17 +518,16 @@ function createForeground() {
   });
 
   // Create Lines (visuals)
-  // We'll update their positions in animate()
-  // Just create a LineSegments object that will hold all lines
   const geometry = new THREE.BufferGeometry();
-  // Allocate enough buffer for links
-  const positions = new Float32Array(links.length * 6); // 2 points * 3 coords
+  const positionCount = links.length * 6; // 2 points * 3 coords
+  // Guard against empty links (e.g. single node clusters)
+  const positions = new Float32Array(Math.max(positionCount, 0)); 
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0x40c9ff,
     transparent: true,
-    opacity: 0.2
+    opacity: 0.1
   });
   
   const lineSegments = new THREE.LineSegments(geometry, lineMaterial);
@@ -510,6 +674,8 @@ function createTimeline() {
 }
 
 
+// ... (previous code)
+
 function onWindowResize() {
   if (!container.value || !camera || !renderer) return;
   
@@ -521,52 +687,34 @@ function onWindowResize() {
 function animate() {
   animationId = requestAnimationFrame(animate);
 
-  // Run simulation tick (optional: could run only N times, but continuous is smooth)
-  // simulation.tick(); // d3-force usually ticks automatically if not stopped, 
-  // but usually we just read x/y/z. forceSimulation starts automatically.
-
-  // Update Node Meshes
+  // Update Node Meshes (Lerping)
   const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
   meshes.forEach((mesh, i) => {
-     // nodes[i] matches meshes[i] order if we created them in order
-     // Double check data ID if unsure, but sequential creation is safe here
      const node = nodes[i]; 
      
      if (isTimelineView.value) {
-         // Lerp to timeline position
          // @ts-ignore
          if (node.timelinePos) {
-             // We modify the node.x/y/z directly so the camera logic still works naturally?
-             // Or better, modify smooth target.
-             // Implem: lerp node position directly here, simulation OFF
-             const lerpSpeed = 0.04; // Slower transition
+             const lerpSpeed = 0.04;
              node.x += (node.timelinePos.x - node.x) * lerpSpeed;
              node.y += (node.timelinePos.y - node.y) * lerpSpeed;
             node.z += (node.timelinePos.z - node.z) * lerpSpeed;
-            
-            // Sync mesh exactly to node (since node is already lerping)
             mesh.position.set(node.x, node.y, node.z);
         }
     } else {
         // Simulation ON
-        // Apply visual smoothing so it matches the enter speed feeling
         const lerpSpeed = 0.04;
         mesh.position.x += (node.x - mesh.position.x) * lerpSpeed;
         mesh.position.y += (node.y - mesh.position.y) * lerpSpeed;
         mesh.position.z += (node.z - mesh.position.z) * lerpSpeed;
     }
-    // mesh.position.set(node.x, node.y, node.z); // Removed strict set
  });
-  
 
-
-
-  // Update Links
+  // Update Links (Visuals)
   const lineLayer = foregroundGroup.children.find(c => c.userData.isLineLayer) as THREE.LineSegments;
   if (lineLayer && lineLayer.geometry && lineLayer.geometry.attributes.position) {
       const positions = lineLayer.geometry.attributes.position.array as Float32Array;
       links.forEach((link, i) => {
-          // d3-force replaces source/target with object references after init
           const source = link.source; 
           const target = link.target;
           
@@ -583,91 +731,64 @@ function animate() {
   
   // Background rotation
   if (backgroundStars && isBackgroundMoving.value) {
-    backgroundStars.rotation.y += 0.00005; // Keep this subtle
+    backgroundStars.rotation.y += 0.00005; 
   }
   
-  // Update Labels
-
-  
-  // Foreground rotation - REMOVED random tumbling
-  // But maybe we want slight global drift?
-  // foregroundGroup.rotation.y += 0.0002; 
-  
   // Camera focus logic
-  const targetPos = selectedStar ? selectedStar.position : new THREE.Vector3(0, 0, 0);
+  const targetPos = new THREE.Vector3(0, 0, 0); 
+  let maxZreq = 100;
   
-  // 1. Determine optimal camera Z to keep all nodes in view relative to targetPos
-  // We align camera X/Y with targetPos X/Y so it's centered
-  let maxZreq = 100; // Minimum distance
-  
-  const fov = camera.fov * (Math.PI / 180);
-  const aspect = camera.aspect;
-  // tan(fov/2) is the ratio of half-height to distance
-  const tanFov2 = Math.tan(fov / 2);
-  
-  // 1. Determine optimal camera Z
-  maxZreq = 100;
-
   if (isTimelineView.value) {
-     // TIMELINE VIEW CAMERA LOGIC
+     // TIMELINE VIEW
      if (selectedStar) {
-         // Focus on selected node
          targetPos.copy(selectedStar.position);
-         maxZreq = 100; // Zoom in for detail
+         maxZreq = 100; 
      } else {
-         // Overview of timeline
          targetPos.set(0, 0, 0); 
          maxZreq = 180;
      }
      
-     // Prevent camera from going too far off sideways
-     // Clamp focus X to timeline range approx
-     const clampRange = 100; // units
+     // Clamp focus X
+     const clampRange = 100;
      if (targetPos.x < -clampRange) targetPos.x = -clampRange;
      if (targetPos.x > clampRange) targetPos.x = clampRange;
+     
   } else {
-      // GRAPH VIEW CAMERA LOGIC (Fit All)
-      const fov = camera.fov * (Math.PI / 180);
-      const aspect = camera.aspect;
-      const tanFov2 = Math.tan(fov / 2);
-      
-      nodes.forEach(node => {
-         const dx = Math.abs(node.x - targetPos.x);
-         const dy = Math.abs(node.y - targetPos.y);
-         const margin = 20;
-         
-         const zReqY = node.z + (dy + margin) / tanFov2;
-         const zReqX = node.z + (dx + margin) / (tanFov2 * aspect);
-         
-         maxZreq = Math.max(maxZreq, zReqY, zReqX);
-      });
-      // Clamping strictness
-      maxZreq = Math.min(maxZreq, 400); 
+      // GRAPH VIEW
+      if (activeCluster.value) {
+          // Focus on active cluster
+            if (activeCluster.value === 'experience' && selectedStar === null) {
+              // Special case for Experience (center):
+               targetPos.copy(CLUSTER_CONFIG['experience'].position);
+               maxZreq = 120;
+            } else if (selectedStar) {
+              targetPos.copy(selectedStar.position);
+              maxZreq = 80; // Zoom in on node
+            } else {
+              targetPos.copy(CLUSTER_CONFIG[activeCluster.value].position);
+              maxZreq = 120; 
+            }
+      } else {
+          // Overview: See all clusters
+          targetPos.set(50, 0, 0); // Roughly center
+          maxZreq = 250; // Far out
+      }
   }
  
-
   // Smoothly move camera
-  // Target position is (target.x, target.y, calculated_Z)
-  // Target LookAt is (target.x, target.y, target.z)
-  
   const currentCamPos = camera.position;
   const desiredCamPos = new THREE.Vector3(targetPos.x, targetPos.y, maxZreq);
   
-  // Lerp factor
   const alpha = 0.05;
   currentCamPos.lerp(desiredCamPos, alpha);
   
-  // Look at target (smoothly)
   currentFocus.lerp(targetPos, alpha);
   camera.lookAt(currentFocus);
   
-  // Ensure matrices are up to date for projection
   camera.updateMatrixWorld();
   camera.updateProjectionMatrix();
 
-  // Update Labels (After camera move to prevent lag)
   updateNodeLabels();
-  
   if (selectedStar) updateOverlayPosition();
 
   renderer.render(scene, camera);
@@ -698,17 +819,38 @@ onUnmounted(() => {
 <template>
   <div class="experimental-container" ref="container">
     
-    <!-- Page Title -->
-    <div class="page-title">Experience</div>
+    <!-- Page Title / Breadcrumb -->
+    <div class="page-title" @click="navigateToCluster(null)" style="cursor: pointer;">
+        {{ activeCluster ? '← Back to Overview' : 'Experimental Lab' }}
+    </div>
 
     <!-- Background Toggle -->
     <div class="bg-toggle" @click="isBackgroundMoving = !isBackgroundMoving">
         {{ isBackgroundMoving ? 'PAUSE STARS' : 'PLAY STARS' }}
     </div>
 
-    <!-- Timeline Toggle -->
-    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView">
+    <!-- Timeline Toggle (Only show if in Experience or Overview?) -->
+    <div class="timeline-toggle" @click="isTimelineView = !isTimelineView" v-if="(activeCluster === 'experience' || !activeCluster) && false">
         {{ isTimelineView ? 'SHOW GRAPH' : 'SHOW TIMELINE' }}
+    </div>
+
+    <!-- Cluster Headers -->
+    <div
+        v-if="!isTimelineView"
+        v-for="label in clusterLabels"
+        :key="label.id"
+        class="cluster-label"
+        :class="{ 'active': activeCluster === label.id }"
+        :style="{
+            left: label.x + 'px',
+            top: label.y + 'px',
+            opacity: label.visible ? (activeCluster === label.id ? 0 : 0.8) : 0,
+            transform: `translate(-50%, -50%) scale(${label.scale})`,
+            pointerEvents: label.visible ? 'auto' : 'none'
+        }"
+        @click.stop="navigateToCluster(label.id)"
+    >
+        {{ label.text }}
     </div>
 
     <!-- Node Labels -->
@@ -795,5 +937,32 @@ onUnmounted(() => {
     background: rgba(64, 201, 255, 0.2);
     color: #fff;
     border-color: rgba(64, 201, 255, 0.6);
+}
+
+.cluster-label {
+    position: absolute;
+    color: #ffffff;
+    font-family: 'Orbitron', 'Inter', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0,0,0,0.8);
+    cursor: pointer;
+    z-index: 10;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+    white-space: nowrap;
+}
+
+.cluster-label:hover {
+    color: #40c9ff;
+    text-shadow: 0 0 20px #40c9ff;
+}
+
+.page-title {
+    transition: opacity 0.3s ease;
+}
+.page-title:hover {
+    opacity: 0.8;
 }
 </style>
