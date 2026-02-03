@@ -40,7 +40,7 @@ export const CLUSTER_CONFIG: Record<ClusterType, ClusterConfig> = {
     }
 };
 
-export const BG_STAR_COUNT = 15000;
+export const BG_STAR_COUNT = 5000;
 export const NODE_RADIUS = 30;
 
 // --- Colors ---

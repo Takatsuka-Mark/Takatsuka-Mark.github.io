@@ -404,10 +404,24 @@ export function useExperimentalView() {
         const geometry = new THREE.BufferGeometry();
         const vertices = [];
 
+        // Spherical Shell Distribution
+        // Min Radius: 250 (Closer to content for more parallax, but still behind)
+        // Max Radius: 1000 (Deep background)
+        const minRadius = 250;
+        const maxRadius = 1000;
+
         for (let i = 0; i < BG_STAR_COUNT; i++) {
-            const x = (Math.random() - 0.5) * 2000;
-            const y = (Math.random() - 0.5) * 2000;
-            const z = (Math.random() - 0.5) * 2000;
+            // Random point on sphere surface
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos((Math.random() * 2) - 1);
+
+            // Random radius within shell
+            const radius = minRadius + Math.random() * (maxRadius - minRadius);
+
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+
             vertices.push(x, y, z);
         }
 
@@ -415,7 +429,7 @@ export function useExperimentalView() {
 
         const material = new THREE.PointsMaterial({
             color: 0xffffff,
-            size: 1.5,
+            size: 2.0, // Increased from 1.0 (User requested larger)
             sizeAttenuation: true,
             transparent: true,
             opacity: 0.8
@@ -468,7 +482,7 @@ export function useExperimentalView() {
 
         // Create Meshes
         nodes.forEach((node) => {
-            const geometry = new THREE.SphereGeometry(1.5, 16, 16);
+            const geometry = new THREE.SphereGeometry(2.25, 16, 16); // Increased from 1.5 (+50%)
             // @ts-ignore
             const color = CLUSTER_CONFIG[node.cluster].color;
 
@@ -494,11 +508,11 @@ export function useExperimentalView() {
                 depthWrite: false
             });
             const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(6, 6, 1);
+            sprite.scale.set(9, 9, 1); // Increased from 6 (+50%)
             star.add(sprite); // Make child so it moves with the node
 
             // NEW: Add Invisible Hitbox
-            const hitGeo = new THREE.SphereGeometry(6, 8, 8); // Larger radius than visual sphere (1.5)
+            const hitGeo = new THREE.SphereGeometry(9, 8, 8); // Increased from 6 (+50%)
             const hitMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.BackSide });
             const hitBox = new THREE.Mesh(hitGeo, hitMat);
             // @ts-ignore
