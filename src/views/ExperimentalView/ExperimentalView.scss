@@ -161,6 +161,11 @@
     /* Allow clicks */
     text-shadow: 0 0 20px rgba(64, 201, 255, 0.3);
     cursor: pointer;
+    transition: opacity 0.3s ease;
+
+    &:hover {
+        opacity: 0.8;
+    }
 }
 
 .node-label {
@@ -214,4 +219,51 @@
     pointer-events: none;
     z-index: 1;
     font-family: monospace;
+}
+
+/* Newly added from .vue file */
+.timeline-toggle {
+    position: absolute;
+    top: 5rem;
+    /* Below the PAUSE STARS button */
+    left: 2rem;
+    color: #40c9ff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 20;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(16, 32, 45, 0.6);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(64, 201, 255, 0.2);
+        color: #fff;
+        border-color: rgba(64, 201, 255, 0.6);
+    }
+}
+
+.cluster-label {
+    position: absolute;
+    color: #ffffff;
+    font-family: 'Orbitron', 'Inter', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    z-index: 10;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+    white-space: nowrap;
+
+    &:hover {
+        color: #40c9ff;
+        text-shadow: 0 0 20px #40c9ff;
+    }
 }
