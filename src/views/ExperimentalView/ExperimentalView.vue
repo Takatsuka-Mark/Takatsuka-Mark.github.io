@@ -235,7 +235,70 @@ watch(isTimelineView, (newVal) => {
   }
 });
 
-// Hit Zones
+// Helper: Create Gradient Texture
+function createGlowTexture(colorStr: string, size: number = 64, intensity: number = 1): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const center = size / 2;
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
+    
+    // Convert hex/number to string if needed, but we passed string/hex usually
+    // Let's assume passed as standard CSS string or hex string
+    
+    gradient.addColorStop(0, 'rgba(255, 255, 255, ' + intensity + ')'); // Bright center
+    gradient.addColorStop(0.2, colorStr); // Core color
+    gradient.addColorStop(0.5, 'rgba(0,0,0,0)'); // Fade out
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// Helper to convert hex number to CSS string
+function hexToRgba(hex: number, alpha: number): string {
+    const r = (hex >> 16) & 255;
+    const g = (hex >> 8) & 255;
+    const b = hex & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Helper: Soft Uniform Bloom (No bright center)
+function createSoftBloomTexture(colorHex: number, size: number = 128, opacity: number = 0.2): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const center = size / 2;
+    const radius = size / 2;
+    
+    // Radial gradient: Constant color in middle, fade at edges
+    const gradient = ctx.createRadialGradient(center, center, radius * 0.4, center, center, radius);
+    
+    const color = hexToRgba(colorHex, opacity);
+    const colorFade = hexToRgba(colorHex, 0);
+    
+    gradient.addColorStop(0, color);    // Center (flat color)
+    gradient.addColorStop(0.6, color);  // Stay flat until 60%
+    gradient.addColorStop(1, colorFade); // Fade to transparent
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// Hit Zones & Visual Bloom
 let hitZoneGroup: THREE.Group;
 
 function createClusterHitZones() {
@@ -245,19 +308,17 @@ function createClusterHitZones() {
     (Object.keys(CLUSTER_CONFIG) as ClusterType[]).forEach(type => {
         const config = CLUSTER_CONFIG[type];
         
-        // Size depends on cluster spread. 
-        // We used random * 50 for nodes, so radius 40-50 is good.
-        // Experience is central, maybe larger?
         const radius = type === 'experience' ? 60 : 45;
         
+        // 1. Invisible Hit Sphere (Physics/Raycast)
         const geometry = new THREE.SphereGeometry(radius, 16, 16);
         const material = new THREE.MeshBasicMaterial({
             color: config.color,
             transparent: true,
-            opacity: 0, // Invisible but clickable
-            side: THREE.BackSide // Render inside too? Or Front is fine. DoubleSide just in case
+            opacity: 0, 
+            side: THREE.BackSide
         });
-        material.depthWrite = false; // Don't block stars visuals
+        material.depthWrite = false;
         
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.copy(config.position);
@@ -265,6 +326,35 @@ function createClusterHitZones() {
         sphere.userData = { isHitZone: true, cluster: type };
         
         hitZoneGroup.add(sphere);
+
+        // 2. Visible Bloom Sprite (Updated style)
+        // User wants single circle lighting up nodegroup, gentle gradient, no bright center.
+        // Opacity should be subtle (e.g. 0.15 - 0.2)
+        const bloomTexture = createSoftBloomTexture(config.color, 128, 0.15);
+        const bloomMaterial = new THREE.SpriteMaterial({ 
+            map: bloomTexture, 
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const bloomSprite = new THREE.Sprite(bloomMaterial);
+        bloomSprite.position.copy(config.position);
+        
+        // Scale needs to be slightly larger than radius to account for gradient edge
+        // User request: "50% larger than node groups".
+        // Node group spread is approx 50. Radius is 45-60.
+        // If we set scale to 1.5 * radius:
+        // Ex: 60 * 1.5 = 90. (Visual solid part ~54). Good fit.
+        // Ex: 45 * 1.5 = 67.5. (Visual solid part ~40).
+        const scale = radius * 1.5; 
+        bloomSprite.scale.set(scale, scale, 1);
+        
+        // IMPORTANT: Ensure the sprite also has userData so it can be clicked
+        // @ts-ignore
+        bloomSprite.userData = { isHitZone: true, cluster: type };
+        
+        hitZoneGroup.add(bloomSprite);
     });
 }
 
@@ -379,7 +469,6 @@ function onClick(event: MouseEvent) {
   raycaster.setFromCamera(mouse, camera);
 
   // 1. Check Stars (Foreground) - Highest Priority
-  // Intersect with stars (meshes only, ignore lines)
   const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
   const intersects = raycaster.intersectObjects(meshes);
 
@@ -388,7 +477,6 @@ function onClick(event: MouseEvent) {
     // @ts-ignore
     const clickedData = clickedStar.userData;
     
-    // Logic: If overview, nav. If background, nav. If active, select.
     if (activeCluster.value === null || activeCluster.value !== clickedData.cluster) {
         navigateToCluster(clickedData.cluster);
     } else {
@@ -398,29 +486,25 @@ function onClick(event: MouseEvent) {
     }
   } else {
       // 2. Check Hit Zones (Background Areas)
+     // Also check the Bloom Sprites, as they are large and might be what the user is trying to click
      const hitZones = hitZoneGroup.children;
      const zoneIntersects = raycaster.intersectObjects(hitZones);
      
      if (zoneIntersects.length > 0) {
-         // Sort by distance (done by intersectObjects), but maybe we want specific logic?
-         // The closest sphere is arguably the one we want.
          const hit = zoneIntersects[0].object;
          // @ts-ignore
-         const targetCluster = hit.userData.cluster;
+         const targetCluster = hit.userData.cluster; 
          
          if (activeCluster.value !== targetCluster) {
              navigateToCluster(targetCluster);
          } else {
-             // Already in this cluster, clicked empty space -> clear selection
              selectedExperience.value = null;
              selectedStar = null;
          }
      } else {
-        // Clicked void: Return to Overview if currently in a cluster
         if (activeCluster.value !== null) {
             navigateToCluster(null);
         } else {
-             // In overview, clicked void -> clear any potential selection
              selectedExperience.value = null;
              selectedStar = null;
         }
@@ -514,6 +598,29 @@ function createForeground() {
     // @ts-ignore
     const star = new THREE.Mesh(geometry, material);
     star.userData = node; // Link mesh back to data
+    
+    // Add Glow Sprite to Node
+    // User said "nodes do not look good". Maybe too big or occluding?
+    // Let's make it smaller and tighter.
+    // Also ensuring depthWrite is false (already is).
+    // Maybe the additive blending against the black sphere is weird?
+    // Let's try to make the sprite sit slightly behind? No, sprites always face camera.
+    // We'll reduce the scale and intensity.
+    
+    // const spriteTexture = createGlowTexture('rgba(200, 230, 255, 0.5)', 64, 1.0);
+    // Reduced opacity 0.5 -> 0.3, Scale 8 -> 6
+    const spriteTexture = createGlowTexture('rgba(200, 230, 255, 0.3)', 64, 1.0);
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: spriteTexture, 
+        color: 0xffffff, 
+        transparent: true, 
+        blending: THREE.AdditiveBlending,
+        depthWrite: false 
+    });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(6, 6, 1); 
+    star.add(sprite); // Make child so it moves with the node
+
     foregroundGroup.add(star);
   });
 
