@@ -12,7 +12,9 @@ const {
     timelineLabels,
     showIntro,
     selectedExperience,
-    overlayPos 
+    overlayPos,
+    selectNode,
+    getClusterLabel
 } = useExperimentalView();
 </script>
 
@@ -21,7 +23,7 @@ const {
     
     <!-- Page Title / Breadcrumb -->
     <div class="page-title" @click="navigateToCluster(null)" style="cursor: pointer;">
-        {{ activeCluster ? '← Back to Overview' : 'Experimental Lab' }}
+        {{ activeCluster ? getClusterLabel(activeCluster) : 'Experimental Lab' }}
     </div>
 
     <!-- Background Toggle -->
@@ -63,6 +65,7 @@ const {
             top: label.y + 'px', 
             opacity: label.visible ? 0.7 : 0 
         }"
+        @click.stop="selectNode(label.id)"
     >
         {{ label.text }}
     </div>

@@ -137,6 +137,21 @@ export function useExperimentalView() {
         }
     }
 
+    // Helper to select a node by ID (for labels)
+    function selectNode(id: number) {
+        // Find the mesh corresponding to this ID
+        const mesh = foregroundGroup.children.find(c => c instanceof THREE.Mesh && c.userData.id === id);
+        if (mesh) {
+            selectedStar = mesh;
+            // @ts-ignore
+            selectedExperience.value = mesh.userData;
+        }
+    }
+
+    function getClusterLabel(clusterId: ClusterType): string {
+        return CLUSTER_CONFIG[clusterId]?.label || '';
+    }
+
     // Cluster Labels
     interface ClusterLabel {
         id: ClusterType;
@@ -333,13 +348,22 @@ export function useExperimentalView() {
         raycaster.setFromCamera(mouse, camera);
 
         // 1. Check Stars (Foreground) - Highest Priority
-        const meshes = foregroundGroup.children.filter(c => c instanceof THREE.Mesh);
-        const intersects = raycaster.intersectObjects(meshes);
+        // Recursive = true to catch child hitboxes
+        const intersects = raycaster.intersectObjects(foregroundGroup.children, true);
 
         if (intersects.length > 0) {
-            const clickedStar = intersects[0].object;
+            // Traverse up to find the main mesh if we hit a child (halo/hitbox)
+            let clickedObject = intersects[0].object;
+            while (clickedObject.parent && clickedObject.parent !== foregroundGroup) {
+                clickedObject = clickedObject.parent;
+            }
+
+            const clickedStar = clickedObject;
             // @ts-ignore
             const clickedData = clickedStar.userData;
+
+            // Ensure it's actually a node
+            if (!clickedData || clickedData.id === undefined) return;
 
             if (activeCluster.value === null || activeCluster.value !== clickedData.cluster) {
                 navigateToCluster(clickedData.cluster);
@@ -472,6 +496,14 @@ export function useExperimentalView() {
             const sprite = new THREE.Sprite(spriteMaterial);
             sprite.scale.set(6, 6, 1);
             star.add(sprite); // Make child so it moves with the node
+
+            // NEW: Add Invisible Hitbox
+            const hitGeo = new THREE.SphereGeometry(6, 8, 8); // Larger radius than visual sphere (1.5)
+            const hitMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.BackSide });
+            const hitBox = new THREE.Mesh(hitGeo, hitMat);
+            // @ts-ignore
+            hitBox.userData = { isHitBox: true };
+            star.add(hitBox);
 
             foregroundGroup.add(star);
         });
@@ -784,5 +816,7 @@ export function useExperimentalView() {
         selectedExperience,
         overlayPos,
         selectedStar: () => selectedStar,
+        selectNode,
+        getClusterLabel
     };
 }
