@@ -6,7 +6,7 @@ import { experiences, education } from '../../data/experiences';
 import { forceSimulation, forceManyBody, forceCollide, forceLink, forceX, forceY, forceZ } from 'd3-force-3d';
 
 import { CLUSTER_CONFIG, type ClusterType, getCompanyColor, BG_STAR_COUNT, NODE_RADIUS } from './ExperimentalViewConfig';
-import { createGlowTexture, createSoftBloomTexture } from './ExperimentalViewHelpers';
+import { createSoftBloomTexture } from './ExperimentalViewHelpers';
 
 export function useExperimentalView() {
     const container = ref<HTMLElement | null>(null);
@@ -609,18 +609,7 @@ export function useExperimentalView() {
             const star = new THREE.Mesh(geometry, material);
             star.userData = node; // Link mesh back to data
 
-            // Add Glow Sprite to Node
-            const spriteTexture = createGlowTexture('rgba(200, 230, 255, 0.3)', 64, 1.0);
-            const spriteMaterial = new THREE.SpriteMaterial({
-                map: spriteTexture,
-                color: 0xffffff,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
-            });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(9, 9, 1); // Increased from 6 (+50%)
-            star.add(sprite); // Make child so it moves with the node
+
 
             // NEW: Add Invisible Hitbox
             const hitGeo = new THREE.SphereGeometry(9, 8, 8); // Increased from 6 (+50%)
