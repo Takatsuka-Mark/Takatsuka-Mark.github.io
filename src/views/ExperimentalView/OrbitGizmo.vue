@@ -82,9 +82,9 @@ function initThree() {
     return sprite;
   };
 
-  createLabel('X', '#ff4444', new THREE.Vector3(2.2, 0, 0));
-  createLabel('Y', '#44ff44', new THREE.Vector3(0, 2.2, 0));
-  createLabel('Z', '#4444ff', new THREE.Vector3(0, 0, 2.2));
+  createLabel('X', '#ff4444', new THREE.Vector3(1.8, 0, 0));
+  createLabel('Y', '#44ff44', new THREE.Vector3(0, 1.8, 0));
+  createLabel('Z', '#4444ff', new THREE.Vector3(0, 0, 1.8));
 
   // Animation Loop
 
