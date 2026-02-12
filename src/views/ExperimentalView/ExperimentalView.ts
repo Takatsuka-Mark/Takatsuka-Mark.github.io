@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
 import * as THREE from 'three';
 import type { Experience } from '../../data/experiences';
 import { experiences, education } from '../../data/experiences';
@@ -40,6 +40,20 @@ export function useExperimentalView() {
     let animationId: number;
     let backgroundStars: THREE.Points;
     let foregroundGroup: THREE.Group;
+
+    // Orbit Control State
+    const orbitState = ref({
+        theta: Math.PI / 4, // Horizontal angle
+        phi: Math.PI / 3,   // Vertical angle (from top)
+        radius: 100         // Distance from target
+    });
+
+    const instructionMinimized = ref(false);
+
+    const interactionState = {
+        isDragging: false,
+        previousMousePosition: { x: 0, y: 0 }
+    };
 
     // D3 Simulation variables
     let simulation: any;
@@ -116,6 +130,14 @@ export function useExperimentalView() {
 
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('click', onClick);
+        window.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        // Touch events
+        window.addEventListener('touchstart', onTouchStart, { passive: false });
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onMouseUp);
     }
 
     // Phase 5: Overlay State
@@ -240,10 +262,83 @@ export function useExperimentalView() {
     // Interaction Variables
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    const targetFocus = new THREE.Vector3(0, 0, 0);
-    const currentFocus = new THREE.Vector3(0, 0, 0);
+    const targetFocus = new THREE.Vector3(0, 0, 0); // Where the camera looks AT
+    const currentFocus = new THREE.Vector3(0, 0, 0); // Smoothed focus point
+    // targetRadius is now separate from orbitState.radius to allow smooth zooming
+    const targetRadius = ref(100);
+
     let selectedStar: THREE.Object3D | null = null;
     const tempVec = new THREE.Vector3();
+
+    // --- Orbit Controls ---
+
+    function onMouseDown(event: MouseEvent) {
+        if (isTimelineView.value) return;
+        interactionState.isDragging = true;
+        interactionState.previousMousePosition = {
+            x: event.clientX,
+            y: event.clientY
+        };
+        instructionMinimized.value = true;
+    }
+
+    function onMouseMove(event: MouseEvent) {
+        if (!interactionState.isDragging || isTimelineView.value) return;
+
+        const deltaMove = {
+            x: event.clientX - interactionState.previousMousePosition.x,
+            y: event.clientY - interactionState.previousMousePosition.y
+        };
+
+        const rotateSpeed = 0.005;
+
+        orbitState.value.theta -= deltaMove.x * rotateSpeed;
+        orbitState.value.phi -= deltaMove.y * rotateSpeed;
+
+        // Clamp phi to avoid gimbal lock or going under the floor too much
+        orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
+
+        interactionState.previousMousePosition = {
+            x: event.clientX,
+            y: event.clientY
+        };
+    }
+
+    function onMouseUp() {
+        interactionState.isDragging = false;
+    }
+
+    function onTouchStart(event: TouchEvent) {
+        if (isTimelineView.value || event.touches.length !== 1) return;
+        interactionState.isDragging = true;
+        interactionState.previousMousePosition = {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY
+        };
+        instructionMinimized.value = true;
+    }
+
+    function onTouchMove(event: TouchEvent) {
+        if (!interactionState.isDragging || isTimelineView.value || event.touches.length !== 1) return;
+        // event.preventDefault(); // Create passive error if not careful, handled in listener options
+
+        const deltaMove = {
+            x: event.touches[0].clientX - interactionState.previousMousePosition.x,
+            y: event.touches[0].clientY - interactionState.previousMousePosition.y
+        };
+
+        const rotateSpeed = 0.005;
+
+        orbitState.value.theta -= deltaMove.x * rotateSpeed;
+        orbitState.value.phi -= deltaMove.y * rotateSpeed;
+
+        orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
+
+        interactionState.previousMousePosition = {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY
+        };
+    }
 
     // Helper to project 3D position to 2D screen coordinates
     function updateOverlayPosition() {
@@ -305,15 +400,53 @@ export function useExperimentalView() {
         // Update Cluster Labels
         clusterLabels.value = (Object.keys(CLUSTER_CONFIG) as ClusterType[]).map(type => {
             const config = CLUSTER_CONFIG[type];
+
+            // Determine Position: Config (Default) or HUD (if another cluster is active)
             tempVec.copy(config.position);
-            tempVec.y += 20;
+
+            if (activeCluster.value && activeCluster.value !== type) {
+                // HUD Logic - Duplicate of Animate Loop Logic
+                // We need to match the position calculated in animate()
+                // Ideally this logic should be shared or stored, but for now let's recalculate accurately.
+
+                const otherClusters = (Object.keys(CLUSTER_CONFIG) as ClusterType[]).filter(c => c !== activeCluster.value);
+                const index = otherClusters.indexOf(type);
+
+                const ndcX = 0.8;
+                const ndcY = 0.8 - (index * 0.2);
+
+                // Unproject direction
+                tempVec.set(ndcX, ndcY, 0.5);
+                tempVec.unproject(camera);
+                tempVec.sub(camera.position).normalize();
+
+                const hudDist = 30;
+                // Target World Pos for the Bloom/Cluster Center
+                tempVec.copy(camera.position).add(tempVec.multiplyScalar(hudDist));
+
+                // Offset label slightly below the bloom?
+                // Actually, let's just use this position.
+            }
+
             tempVec.project(camera);
             const isVisible = tempVec.z < 1 && tempVec.z > -1;
 
             if (isVisible) {
                 const x = (tempVec.x * .5 + .5) * width;
                 const y = (-(tempVec.y * .5) + .5) * height;
-                const scale = Math.max(0.5, 1 - (tempVec.z * 0.5));
+
+                // Scale label based on distance/context?
+                // If HUD, maybe fixed scale?
+                let scale = Math.max(0.5, 1 - (tempVec.z * 0.5));
+
+                if (activeCluster.value && activeCluster.value !== type) {
+                    // HUD override
+                    // Labels might be too big if we don't scale them down.
+                    scale = 0.8;
+                    // Adjust Y slightly to be under the cloud?
+                    // HUD items are small clouds.
+                }
+
                 return { id: type, text: config.label, x, y, visible: true, scale };
             } else {
                 return { id: type, text: config.label, x: 0, y: 0, visible: false, scale: 1 };
@@ -341,6 +474,11 @@ export function useExperimentalView() {
 
     function onClick(event: MouseEvent) {
         if (!container.value) return;
+
+        // If we were dragging, don't register as a click
+        if (interactionState.isDragging) return;
+
+        instructionMinimized.value = true;
 
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -741,7 +879,7 @@ export function useExperimentalView() {
         let maxZreq = 100;
 
         if (isTimelineView.value) {
-            // TIMELINE VIEW
+            // TIMELINE VIEW - Classic Panning Logic
             if (selectedStar) {
                 targetPos.copy(selectedStar.position);
                 maxZreq = 100;
@@ -755,37 +893,184 @@ export function useExperimentalView() {
             if (targetPos.x < -clampRange) targetPos.x = -clampRange;
             if (targetPos.x > clampRange) targetPos.x = clampRange;
 
+            // Simple Lerp for Timeline (no orbit)
+            const currentCamPos = camera.position;
+            const desiredCamPos = new THREE.Vector3(targetPos.x, targetPos.y, maxZreq);
+
+            const alpha = 0.05;
+            currentCamPos.lerp(desiredCamPos, alpha);
+            currentFocus.lerp(targetPos, alpha);
+            camera.lookAt(currentFocus);
+
         } else {
-            // GRAPH VIEW
+            // GRAPH VIEW - Orbit Logic
             if (activeCluster.value) {
-                // Focus on active cluster
-                if (activeCluster.value === 'experience' && selectedStar === null) {
-                    // Special case for Experience (center):
-                    targetPos.copy(CLUSTER_CONFIG['experience'].position);
-                    maxZreq = 120;
-                } else if (selectedStar) {
-                    targetPos.copy(selectedStar.position);
-                    maxZreq = 80; // Zoom in on node
+                // Focus on active cluster center
+                const clusterPos = CLUSTER_CONFIG[activeCluster.value].position;
+                targetPos.copy(clusterPos);
+
+                if (selectedStar) {
+                    // If a star is selected, maybe we want to zoom in closer?
+                    // For now, keep rotation around cluster center but maybe reduce radius?
+                    // Or rotate around the star itself? 
+                    // User said: "rotate the camera around the center point of the cluster that is currently in view"
+                    targetRadius.value = 80;
                 } else {
-                    targetPos.copy(CLUSTER_CONFIG[activeCluster.value].position);
-                    maxZreq = 120;
+                    targetRadius.value = 120;
                 }
+
             } else {
-                // Overview: See all clusters
-                targetPos.set(50, 0, 0); // Roughly center
-                maxZreq = 250; // Far out
+                // Overview: Rotate around center
+                targetPos.set(0, 0, 0);
+                targetRadius.value = 250;
+            }
+
+            const alpha = 0.05;
+
+            // 1. Smoothly interpolate the LookAt point
+            currentFocus.lerp(targetPos, alpha);
+
+            // 2. Smoothly interpolate the Radius
+            orbitState.value.radius += (targetRadius.value - orbitState.value.radius) * alpha;
+
+            // 3. Calculate Camera Position from Orbit State (Spherical -> Cartesian)
+            // x = r * sin(phi) * cos(theta)
+            // y = r * cos(phi)
+            // z = r * sin(phi) * sin(theta)
+            // adjusted for Three.js coordinate system where Y is up
+
+            const r = orbitState.value.radius;
+            const t = orbitState.value.theta;
+            const p = orbitState.value.phi;
+
+            const x = currentFocus.x + r * Math.sin(p) * Math.sin(t);
+            const y = currentFocus.y + r * Math.cos(p);
+            const z = currentFocus.z + r * Math.sin(p) * Math.cos(t);
+
+            camera.position.set(x, y, z);
+            camera.lookAt(currentFocus);
+
+            // --- HUD / Cluster Menu Logic ---
+            // If we have an active cluster, move OTHER clusters to "screen space" locations
+            if (activeCluster.value) {
+                // Define HUD stack positions (Top Right)
+                // NDC coordinates: Top Right is (1, 1). Let's start around (0.8, 0.8) and go down.
+                const otherClusters = (Object.keys(CLUSTER_CONFIG) as ClusterType[])
+                    .filter(c => c !== activeCluster.value);
+
+                otherClusters.forEach((clusterId, index) => {
+                    const config = CLUSTER_CONFIG[clusterId];
+
+                    // 1. Calculate Target HUD Position in World Space
+                    // We want it fixed relative to the camera.
+                    // Position: ~20 units in front of camera, at specific screen coordinates.
+
+                    const ndcX = 0.8;
+                    const ndcY = 0.8 - (index * 0.2); // Stack vertically
+
+                    // Unproject to get a direction vector
+                    // We want a point on the plane z = -20 (relative to camera)
+                    // But unproject works with depth -1 to 1.
+
+                    tempVec.set(ndcX, ndcY, 0.5); // 0.5 is somewhat arbitrary depth in frustum
+                    tempVec.unproject(camera);
+                    tempVec.sub(camera.position).normalize();
+
+                    const hudDist = 30; // Distance from camera
+                    const targetWorldPos = camera.position.clone().add(tempVec.multiplyScalar(hudDist));
+
+                    // 2. Move HitZone/Bloom to this position
+                    // Find the group/mesh for this cluster
+                    // We need to find the specific children in hitZoneGroup
+                    const hitZone = hitZoneGroup.children.find(c => c.userData.cluster === clusterId && c instanceof THREE.Mesh);
+                    const bloom = hitZoneGroup.children.find(c => c.userData.cluster === clusterId && c instanceof THREE.Sprite);
+
+                    const lerpSpeed = 0.05;
+
+                    if (hitZone) hitZone.position.lerp(targetWorldPos, lerpSpeed);
+                    if (bloom) {
+                        bloom.position.lerp(targetWorldPos, lerpSpeed);
+                        // Scale down bloom for menu item look
+                        const targetScale = 10;
+                        bloom.scale.lerp(new THREE.Vector3(targetScale, targetScale, 1), lerpSpeed);
+                    }
+
+                    // 3. Move Nodes to this position (Compact Cloud)
+                    // We bypass simulation for these nodes effectively by overriding their positions here
+                    // OR we can set their simulation target (fx, fy, fz). 
+                    // Let's try direct lerp for "stickiness" + slight random offset
+
+                    // Find nodes belonging to this cluster
+                    const clusterNodes = nodes.filter(n => n.cluster === clusterId);
+
+                    clusterNodes.forEach((node, i) => {
+                        // Deterministic random offset based on ID
+                        const offsetX = Math.sin(node.id * 123) * 2;
+                        const offsetY = Math.cos(node.id * 321) * 2;
+                        const offsetZ = Math.sin(node.id * 789) * 2;
+
+                        const nodeTarget = targetWorldPos.clone().add(new THREE.Vector3(offsetX, offsetY, offsetZ));
+
+                        // Override simulation/position
+                        node.x += (nodeTarget.x - node.x) * lerpSpeed;
+                        node.y += (nodeTarget.y - node.y) * lerpSpeed;
+                        node.z += (nodeTarget.z - node.z) * lerpSpeed;
+
+                        // We also need to update the mesh position
+                        // The mesh update loop above (lines ~793) uses node.x/y/z.
+                        // However, that loop runs BEFORE this block. 
+                        // It's okay, next frame it will pick up. 
+                        // BUT wait, that loop runs based on `nodes` data. 
+                        // If we modify `node.x` here, D3 simulation might fight back if alpha > 0.
+                        // We should probably stop simulation or set fx/fy/fz?
+                        // For now, let's just forcefuly update node.x/y/z. 
+                        // To be clean, we should set node.vx = 0...
+                        node.vx = 0;
+                        node.vy = 0;
+                        node.vz = 0;
+                    });
+
+                });
+
+                // Also ensure the ACTIVE cluster bloom/hitzone is at its original config position?
+                // Or just leave it? If we don't touch it, it stays where it last was.
+                // We should ensure it lerps back to Config Position if it was previously a menu item.
+                const activeConfig = CLUSTER_CONFIG[activeCluster.value];
+                const activeHitZone = hitZoneGroup.children.find(c => c.userData.cluster === activeCluster.value && c instanceof THREE.Mesh);
+                const activeBloom = hitZoneGroup.children.find(c => c.userData.cluster === activeCluster.value && c instanceof THREE.Sprite);
+
+                if (activeHitZone) activeHitZone.position.lerp(activeConfig.position, 0.05);
+                if (activeBloom) {
+                    activeBloom.position.lerp(activeConfig.position, 0.05);
+                    // Restore scale
+                    const radius = activeCluster.value === 'experience' ? 60 : 45;
+                    const targetScale = radius * 1.5;
+                    activeBloom.scale.lerp(new THREE.Vector3(targetScale, targetScale, 1), 0.05);
+                }
+
+                // And Active Nodes? They behave normally via simulation/lerp in the top loop.
+                // We need to ensure they are NOT forced to a HUD position.
+                // So we just don't touch them here.
+
+            } else {
+                // OVERVIEW MODE
+                // Reset ALL clusters to config positions
+                (Object.keys(CLUSTER_CONFIG) as ClusterType[]).forEach(clusterId => {
+                    const config = CLUSTER_CONFIG[clusterId];
+                    const hitZone = hitZoneGroup.children.find(c => c.userData.cluster === clusterId && c instanceof THREE.Mesh);
+                    const bloom = hitZoneGroup.children.find(c => c.userData.cluster === clusterId && c instanceof THREE.Sprite);
+
+                    if (hitZone) hitZone.position.lerp(config.position, 0.05);
+                    if (bloom) {
+                        bloom.position.lerp(config.position, 0.05);
+                        const radius = clusterId === 'experience' ? 60 : 45;
+                        const scale = radius * 1.5;
+                        bloom.scale.lerp(new THREE.Vector3(scale, scale, 1), 0.05);
+                    }
+                    // Nodes handled by Simulation (which pushes them to config.position)
+                });
             }
         }
-
-        // Smoothly move camera
-        const currentCamPos = camera.position;
-        const desiredCamPos = new THREE.Vector3(targetPos.x, targetPos.y, maxZreq);
-
-        const alpha = 0.05;
-        currentCamPos.lerp(desiredCamPos, alpha);
-
-        currentFocus.lerp(targetPos, alpha);
-        camera.lookAt(currentFocus);
 
         camera.updateMatrixWorld();
         camera.updateProjectionMatrix();
@@ -798,14 +1083,33 @@ export function useExperimentalView() {
 
     onMounted(() => {
         initThree();
+
         setTimeout(() => {
             showIntro.value = false;
         }, 2000);
+
+        return () => {
+            // Cleanup listeners if needed
+            window.removeEventListener('resize', onWindowResize);
+            window.removeEventListener('click', onClick);
+            window.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
     });
 
     onUnmounted(() => {
-        cancelAnimationFrame(animationId);
+        if (animationId) cancelAnimationFrame(animationId);
         window.removeEventListener('resize', onWindowResize);
+
+        // Remove other listeners
+        window.removeEventListener('click', onClick);
+        window.removeEventListener('mousedown', onMouseDown);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('touchstart', onTouchStart);
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onMouseUp); // Using same handler
 
         if (simulation) simulation.stop();
 
@@ -829,8 +1133,8 @@ export function useExperimentalView() {
         showIntro,
         selectedExperience,
         overlayPos,
-        selectedStar: () => selectedStar,
         selectNode,
-        getClusterLabel
+        getClusterLabel,
+        instructionMinimized // Exported
     };
 }

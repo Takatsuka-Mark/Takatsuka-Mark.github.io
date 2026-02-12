@@ -268,3 +268,104 @@
         text-shadow: 0 0 20px #40c9ff;
     }
 }
+
+.orbit-instruction {
+    position: absolute;
+    // Start Center
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.5);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.9;
+
+    transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    &.minimized {
+        top: auto;
+        bottom: 2rem;
+        // Reset transform for bottom positioning
+        top: 90%; // Push it down
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0.6;
+        gap: 0.5rem;
+
+        .compass-icon {
+            animation: none;
+            transform: rotate(0deg); // Reset rotation to neutral
+        }
+    }
+
+    .compass-icon {
+        width: 60px;
+        height: 60px;
+        border: 2px solid rgba(64, 201, 255, 0.5);
+        border-radius: 50%;
+        position: relative;
+        animation: spin-slow 10s linear infinite;
+        transition: all 0.5s ease;
+
+        // Center Dot
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        // Arrow Up
+        .arrow-up {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 8px solid #40c9ff;
+            transform: translateX(-50%);
+        }
+
+        // Arrow Right
+        .arrow-right {
+            position: absolute;
+            top: 50%;
+            right: 5px;
+            width: 0;
+            height: 0;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            border-left: 8px solid #40c9ff;
+            transform: translateY(-50%);
+        }
+    }
+
+    p {
+        margin: 0;
+        color: #40c9ff;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px rgba(64, 201, 255, 0.5);
+        transition: all 0.5s ease;
+    }
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

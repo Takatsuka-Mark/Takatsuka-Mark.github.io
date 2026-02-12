@@ -14,7 +14,8 @@ const {
     selectedExperience,
     overlayPos,
     selectNode,
-    getClusterLabel
+    getClusterLabel,
+    instructionMinimized
 } = useExperimentalView();
 </script>
 
@@ -84,6 +85,23 @@ const {
     >
         {{ label.text }}
     </div>
+
+    <!-- Orbit Instruction Overlay -->
+    <Transition name="fade">
+        <div 
+            v-if="!isTimelineView" 
+            class="orbit-instruction"
+            :class="{ minimized: instructionMinimized }"
+        >
+            <div class="compass-icon">
+                <!-- Simple CSS Compass / Arrows -->
+                <div class="arrow-up"></div>
+                <div class="arrow-right"></div>
+                <div class="center-dot"></div>
+            </div>
+            <p>Drag to Orbit</p>
+        </div>
+    </Transition>
 
     <Transition name="fade">
       <div v-if="showIntro" class="intro-overlay">
