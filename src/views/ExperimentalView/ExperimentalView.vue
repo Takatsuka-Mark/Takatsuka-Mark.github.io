@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useExperimentalView } from './ExperimentalView';
+import OrbitGizmo from './OrbitGizmo.vue';
+
 
 const { 
     container, 
@@ -15,8 +17,12 @@ const {
     overlayPos,
     selectNode,
     getClusterLabel,
-    instructionMinimized
+    instructionMinimized,
+    cameraQuaternion,
+    gizmoCameraPos
 } = useExperimentalView();
+
+
 </script>
 
 <template>
@@ -93,15 +99,14 @@ const {
             class="orbit-instruction"
             :class="{ minimized: instructionMinimized }"
         >
-            <div class="compass-icon">
-                <!-- Simple CSS Compass / Arrows -->
-                <div class="arrow-up"></div>
-                <div class="arrow-right"></div>
-                <div class="center-dot"></div>
+            <div class="gizmo-wrapper">
+                <OrbitGizmo :quaternion="cameraQuaternion" :cameraPosition="gizmoCameraPos" />
             </div>
+
             <p>Drag to Orbit</p>
         </div>
     </Transition>
+
 
     <Transition name="fade">
       <div v-if="showIntro" class="intro-overlay">
