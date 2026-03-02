@@ -43,6 +43,7 @@
 .route-text {
   margin-bottom: 0;
   padding: 0.5rem 1rem 0.5rem 1rem;
+  white-space: nowrap;
 }
 
 #logo {
@@ -143,6 +144,5 @@
 
 
 .router-link {
-  width: 100%;
   text-decoration: none;
 }
