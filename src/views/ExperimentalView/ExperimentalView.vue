@@ -95,7 +95,7 @@ const {
     <!-- Orbit Instruction Overlay -->
     <Transition name="fade">
         <div 
-            v-if="!isTimelineView" 
+            v-if="false" 
             class="orbit-instruction"
             :class="{ minimized: instructionMinimized }"
         >

@@ -295,11 +295,12 @@ export function useExperimentalView() {
 
         const rotateSpeed = 0.005;
 
-        orbitState.value.theta -= deltaMove.x * rotateSpeed;
-        orbitState.value.phi -= deltaMove.y * rotateSpeed;
+        // Rotation disabled for now per user request
+        // orbitState.value.theta -= deltaMove.x * rotateSpeed;
+        // orbitState.value.phi -= deltaMove.y * rotateSpeed;
 
         // Clamp phi to avoid gimbal lock or going under the floor too much
-        orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
+        // orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
 
         interactionState.previousMousePosition = {
             x: event.clientX,
@@ -332,10 +333,11 @@ export function useExperimentalView() {
 
         const rotateSpeed = 0.005;
 
-        orbitState.value.theta -= deltaMove.x * rotateSpeed;
-        orbitState.value.phi -= deltaMove.y * rotateSpeed;
+        // Rotation disabled for now per user request
+        // orbitState.value.theta -= deltaMove.x * rotateSpeed;
+        // orbitState.value.phi -= deltaMove.y * rotateSpeed;
 
-        orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
+        // orbitState.value.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitState.value.phi));
 
         interactionState.previousMousePosition = {
             x: event.touches[0].clientX,
