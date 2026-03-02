@@ -161,6 +161,11 @@
     /* Allow clicks */
     text-shadow: 0 0 20px rgba(64, 201, 255, 0.3);
     cursor: pointer;
+    transition: opacity 0.3s ease;
+
+    &:hover {
+        opacity: 0.8;
+    }
 }
 
 .node-label {
@@ -170,7 +175,8 @@
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    pointer-events: none;
+    pointer-events: auto;
+    cursor: pointer;
     white-space: nowrap;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
     background: rgba(0, 0, 0, 0.4);
@@ -214,4 +220,127 @@
     pointer-events: none;
     z-index: 1;
     font-family: monospace;
+}
+
+/* Newly added from .vue file */
+.timeline-toggle {
+    position: absolute;
+    top: 5rem;
+    /* Below the PAUSE STARS button */
+    left: 2rem;
+    color: #40c9ff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 20;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(64, 201, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(16, 32, 45, 0.6);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(64, 201, 255, 0.2);
+        color: #fff;
+        border-color: rgba(64, 201, 255, 0.6);
+    }
+}
+
+.cluster-label {
+    position: absolute;
+    color: #ffffff;
+    font-family: 'Orbitron', 'Inter', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    z-index: 10;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+    white-space: nowrap;
+
+    &:hover {
+        color: #40c9ff;
+        text-shadow: 0 0 20px #40c9ff;
+    }
+}
+
+.orbit-instruction {
+    position: absolute;
+    // Start Center
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.5);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.9;
+
+    transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    &.minimized {
+        top: auto;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%) scale(0.6);
+        opacity: 0.6;
+        gap: 0.5rem;
+        flex-direction: column-reverse;
+
+        p {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            white-space: nowrap;
+        }
+
+        .gizmo-wrapper {
+            width: 100px;
+            height: 100px;
+        }
+
+        .compass-icon {
+            animation: none;
+            transform: rotate(0deg); // Reset rotation to neutral
+        }
+    }
+
+    .gizmo-wrapper {
+        width: 120px;
+        height: 120px;
+        position: relative;
+        // background: rgba(0,0,0,0.2); // Debug
+
+        // Ensure pointer events pass through if needed, but gizmo might want them?
+        // Current design: "Drag to Orbit" implies dragging anywhere on screen.
+        pointer-events: none;
+    }
+
+
+    p {
+        margin: 0;
+        color: #40c9ff;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px rgba(64, 201, 255, 0.5);
+        transition: all 0.5s ease;
+    }
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
