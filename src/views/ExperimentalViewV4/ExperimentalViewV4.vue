@@ -26,7 +26,7 @@ onMounted(() => {
     1000
   );
   // Position camera so it looks at the center from somewhat above and away
-  camera.position.set(0, 5, 10);
+  camera.position.set(0, 5.77, 10);
   camera.lookAt(0, 0, 0);
 
   // Renderer setup
@@ -73,6 +73,8 @@ onMounted(() => {
     count: 20000,
     size: 0.05,
     radius: 7,
+    coreRadius: 1.5,
+    coreDensity: 0.2, // 20% of particles are in the dense core
     branches: 3,
     spin: 1,
     randomness: 0.4,
@@ -91,22 +93,46 @@ onMounted(() => {
   for (let i = 0; i < galaxyParameters.count; i++) {
     const i3 = i * 3;
 
-    // Position
-    const radius = Math.random() * galaxyParameters.radius;
-    const spinAngle = radius * galaxyParameters.spin;
-    const branchAngle = ((i % galaxyParameters.branches) / galaxyParameters.branches) * Math.PI * 2;
+    const inCore = i < galaxyParameters.count * galaxyParameters.coreDensity;
+    let x, y, z;
+    let pointRadiusForColor;
 
-    const randomX = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * galaxyParameters.randomness * radius;
-    const randomY = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * galaxyParameters.randomness * radius;
-    const randomZ = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * galaxyParameters.randomness * radius;
+    if (inCore) {
+      // Core points
+      const r = Math.pow(Math.random(), 0.5) * galaxyParameters.coreRadius;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
 
-    galaxyPositions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-    galaxyPositions[i3 + 1] = randomY; // Flattened disc shape
-    galaxyPositions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+      x = r * Math.sin(phi) * Math.cos(theta);
+      y = r * Math.cos(phi) * 0.5; // flatten slightly
+      z = r * Math.sin(phi) * Math.sin(theta);
+      pointRadiusForColor = r * 0.5;
+    } else {
+      // Arm points
+      const rRand = Math.random();
+      const radius = galaxyParameters.coreRadius + rRand * (galaxyParameters.radius - galaxyParameters.coreRadius);
+      const spinAngle = radius * galaxyParameters.spin;
+      const branchAngle = ((i % galaxyParameters.branches) / galaxyParameters.branches) * Math.PI * 2;
+      
+      const spread = galaxyParameters.randomness * (radius / galaxyParameters.radius);
+
+      const randomX = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * spread * radius;
+      const randomY = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * spread * radius;
+      const randomZ = Math.pow(Math.random(), galaxyParameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * spread * radius;
+
+      x = Math.cos(branchAngle + spinAngle) * radius + randomX;
+      y = randomY; // Flattened disc shape
+      z = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+      pointRadiusForColor = radius;
+    }
+
+    galaxyPositions[i3] = x;
+    galaxyPositions[i3 + 1] = y;
+    galaxyPositions[i3 + 2] = z;
 
     // Color
     const mixedColor = colorInside.clone();
-    mixedColor.lerp(colorOutside, radius / galaxyParameters.radius);
+    mixedColor.lerp(colorOutside, pointRadiusForColor / galaxyParameters.radius);
 
     galaxyColors[i3] = mixedColor.r;
     galaxyColors[i3 + 1] = mixedColor.g;
