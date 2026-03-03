@@ -313,7 +313,7 @@ export function useExperimentalView() {
     }
 
     function onTouchStart(event: TouchEvent) {
-        if (isTimelineView.value || event.touches.length !== 1) return;
+        if (isTimelineView.value || event.touches.length !== 1 || !event.touches[0]) return;
         interactionState.isDragging = true;
         interactionState.previousMousePosition = {
             x: event.touches[0].clientX,
@@ -323,7 +323,7 @@ export function useExperimentalView() {
     }
 
     function onTouchMove(event: TouchEvent) {
-        if (!interactionState.isDragging || isTimelineView.value || event.touches.length !== 1) return;
+        if (!interactionState.isDragging || isTimelineView.value || event.touches.length !== 1 || !event.touches[0]) return;
         // event.preventDefault(); // Create passive error if not careful, handled in listener options
 
         const deltaMove = {
@@ -464,7 +464,7 @@ export function useExperimentalView() {
         // Recursive = true to catch child hitboxes
         const intersects = raycaster.intersectObjects(foregroundGroup.children, true);
 
-        if (intersects.length > 0) {
+        if (intersects.length > 0 && intersects[0]?.object) {
             // Traverse up to find the main mesh if we hit a child (halo/hitbox)
             let clickedObject = intersects[0].object;
             while (clickedObject.parent && clickedObject.parent !== foregroundGroup) {
@@ -491,7 +491,7 @@ export function useExperimentalView() {
             const hitZones = hitZoneGroup.children;
             const zoneIntersects = raycaster.intersectObjects(hitZones);
 
-            if (zoneIntersects.length > 0) {
+            if (zoneIntersects.length > 0 && zoneIntersects[0]?.object) {
                 const hit = zoneIntersects[0].object;
                 // @ts-ignore
                 const targetCluster = hit.userData.cluster;
@@ -725,7 +725,7 @@ export function useExperimentalView() {
             // Find a lane
             let laneIndex = -1;
             for (let i = 0; i < lanes.length; i++) {
-                if (lanes[i] < nodeStart) {
+                if (lanes[i] !== undefined && lanes[i]! < nodeStart) {
                     laneIndex = i;
                     break;
                 }
