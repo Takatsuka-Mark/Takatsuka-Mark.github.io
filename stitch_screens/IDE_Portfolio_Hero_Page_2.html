@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alex Chen - Terminal Launch</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "editor-bg": "#0d1117",
+                        "sidebar-bg": "#161b22",
+                        "border-color": "#30363d",
+                        "syntax-keyword": "#ff7b72",
+                        "syntax-func": "#d2a8ff",
+                        "syntax-string": "#a5d6ff",
+                        "syntax-var": "#79c0ff",
+                        "syntax-comment": "#8b949e",
+                        "syntax-obj": "#7ee787",
+                        "syntax-class": "#f0883e",
+                        "terminal-green": "#2ea043",
+                        "terminal-blue": "#58a6ff"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(19, 91, 236, 0.5)',
+                        'glow-hover': '0 0 30px rgba(19, 91, 236, 0.7)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .blink-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-editor-bg text-slate-100 font-mono overflow-hidden h-screen flex flex-col items-center justify-center relative">
+<div class="absolute inset-0 pointer-events-none opacity-[0.03]" style="background-image: linear-gradient(#30363d 1px, transparent 1px), linear-gradient(90deg, #30363d 1px, transparent 1px); background-size: 40px 40px;">
+</div>
+<main class="z-10 flex flex-col items-start max-w-2xl w-full px-8 gap-6">
+<div class="flex items-center gap-3 text-lg md:text-xl w-full">
+<div class="flex items-center gap-0 opacity-90 select-none">
+<span class="text-terminal-green font-bold">user@portfolio</span>
+<span class="text-slate-400">:</span>
+<span class="text-terminal-blue font-bold">~</span>
+<span class="text-slate-400">$</span>
+</div>
+<div class="typing-text text-slate-100">whoami</div>
+</div>
+<div class="flex flex-col gap-1 pl-0 mb-4">
+<h1 class="text-5xl md:text-7xl font-bold tracking-tight text-syntax-func">
+            Alex Chen
+        </h1>
+<p class="text-xl md:text-2xl text-syntax-string font-medium mt-2">
+            Computer Scientist
+        </p>
+</div>
+<div class="flex items-center gap-3 text-lg md:text-xl w-full">
+<div class="flex items-center gap-0 opacity-90 select-none">
+<span class="text-terminal-green font-bold">user@portfolio</span>
+<span class="text-slate-400">:</span>
+<span class="text-terminal-blue font-bold">~</span>
+<span class="text-slate-400">$</span>
+</div>
+<div class="text-slate-100 flex items-center">
+            portfolio.init()<span class="ml-1 w-2.5 h-5 bg-slate-400 blink-cursor inline-block"></span>
+</div>
+</div>
+<div class="w-full flex justify-center mt-12">
+<button class="bg-primary text-white text-xl md:text-2xl font-bold py-4 px-12 rounded-lg shadow-glow hover:shadow-glow-hover hover:scale-105 transition-all duration-300 ease-out border border-blue-500/30">
+            Launch
+        </button>
+</div>
+</main>
+<div class="fixed bottom-8 text-slate-600 text-xs font-mono">
+    Terminal Session: active • v2.4.0
+</div>
+</body></html>

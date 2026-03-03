@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DevPortfolio.ide - Projects</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "editor-bg": "#1e293b",
+                        "sidebar-bg": "#111722",
+                        "accent-blue": "#60a5fa",
+                        "accent-green": "#4ade80",
+                        "accent-purple": "#c084fc",
+                        "accent-yellow": "#facc15",
+                        "accent-red": "#f87171",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111722; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2d3b55; 
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3e4c6b; 
+        }
+        .syntax-purple { color: #c084fc; }
+        .syntax-blue { color: #60a5fa; }
+        .syntax-green { color: #4ade80; }
+        .syntax-yellow { color: #facc15; }
+        .syntax-gray { color: #94a3b8; }
+        .syntax-orange { color: #fb923c; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 h-screen flex flex-col overflow-hidden">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-700 bg-sidebar-bg px-4 py-3 shrink-0">
+<div class="flex items-center gap-8 text-slate-100">
+<div class="flex items-center gap-2">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<h2 class="text-slate-100 text-lg font-bold leading-tight tracking-[-0.015em]">DevPortfolio.ide</h2>
+</div>
+<nav class="hidden md:flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50">
+<a class="text-slate-400 hover:text-white hover:bg-slate-700/50 px-3 py-1 rounded text-sm font-medium transition-all" href="#">Home</a>
+<a class="text-primary bg-primary/10 px-3 py-1 rounded text-sm font-medium transition-all" href="#">Projects</a>
+<a class="text-slate-400 hover:text-white hover:bg-slate-700/50 px-3 py-1 rounded text-sm font-medium transition-all" href="#">Resume</a>
+<a class="text-slate-400 hover:text-white hover:bg-slate-700/50 px-3 py-1 rounded text-sm font-medium transition-all" href="#">Contact</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center bg-editor-bg rounded px-3 py-1.5 border border-slate-700 w-64 focus-within:border-primary transition-colors">
+<span class="material-symbols-outlined text-slate-500 text-[18px] mr-2">search</span>
+<input class="bg-transparent border-none outline-none text-slate-300 text-sm w-full placeholder-slate-600 focus:ring-0 p-0" placeholder="Search files..." readonly="" type="text" value="SmartHome_Dashboard"/>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded bg-primary hover:bg-blue-600 text-white h-8 px-4 text-xs font-bold uppercase tracking-wider transition-colors shadow-lg shadow-primary/20">
+<span class="truncate">Hire Me</span>
+</button>
+<div class="flex gap-1">
+<button class="flex items-center justify-center rounded hover:bg-slate-700 text-slate-400 hover:text-white h-8 w-8 transition-colors">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+<button class="flex items-center justify-center rounded hover:bg-slate-700 text-slate-400 hover:text-white h-8 w-8 transition-colors md:hidden">
+<span class="material-symbols-outlined text-[20px]">menu</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-12 bg-sidebar-bg border-r border-slate-700 flex flex-col items-center py-4 gap-6 shrink-0 z-10 hidden sm:flex">
+<div class="text-slate-100 cursor-pointer border-l-2 border-primary w-full flex justify-center h-8 items-center bg-slate-800/50">
+<span class="material-symbols-outlined text-[24px]">folder_open</span>
+</div>
+<div class="text-slate-500 hover:text-slate-100 cursor-pointer transition-colors w-full flex justify-center relative group">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</div>
+<div class="text-slate-500 hover:text-slate-100 cursor-pointer transition-colors w-full flex justify-center">
+<span class="material-symbols-outlined text-[24px]">call_split</span>
+</div>
+<div class="text-slate-500 hover:text-slate-100 cursor-pointer transition-colors w-full flex justify-center">
+<span class="material-symbols-outlined text-[24px]">bug_report</span>
+</div>
+<div class="text-slate-500 hover:text-slate-100 cursor-pointer transition-colors w-full flex justify-center">
+<span class="material-symbols-outlined text-[24px]">extension</span>
+</div>
+<div class="mt-auto text-slate-500 hover:text-slate-100 cursor-pointer transition-colors w-full flex justify-center">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+</div>
+</aside>
+<aside class="w-64 bg-sidebar-bg border-r border-slate-700 flex flex-col shrink-0 hidden md:flex">
+<div class="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center border-b border-slate-800/50">
+<span>Explorer</span>
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-white">more_horiz</span>
+</div>
+<div class="flex-1 overflow-y-auto font-mono text-sm pt-2">
+<div class="group">
+<div class="px-3 py-1 flex items-center gap-1 cursor-pointer hover:bg-slate-800 text-slate-400 transition-colors">
+<span class="material-symbols-outlined text-[16px] transition-transform group-hover:rotate-90">chevron_right</span>
+<span class="font-bold text-[11px] uppercase tracking-wide">Open Editors</span>
+</div>
+</div>
+<div class="group mt-1">
+<div class="px-3 py-1 flex items-center gap-1 cursor-pointer hover:bg-slate-800 text-slate-200 font-bold">
+<span class="material-symbols-outlined text-[16px] rotate-90">expand_more</span>
+<span class="text-[11px] uppercase tracking-wide">PORTFOLIO-WORKSPACE</span>
+</div>
+<div class="pl-3">
+<div class="px-2 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] rotate-90 text-slate-500">expand_more</span>
+<span class="material-symbols-outlined text-[18px] text-accent-yellow">folder</span>
+<span>src</span>
+</div>
+<div class="pl-3 ml-2 border-l border-slate-700/50">
+<div class="px-2 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-slate-500">chevron_right</span>
+<span class="material-symbols-outlined text-[18px] text-accent-green">folder</span>
+<span>components</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 text-slate-300">
+<span class="material-symbols-outlined text-[16px] rotate-90 text-slate-500">expand_more</span>
+<span class="material-symbols-outlined text-[18px] text-accent-blue">folder_open</span>
+<span>projects</span>
+</div>
+<div class="pl-3 ml-2 border-l border-slate-700/50">
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer bg-slate-800/80 border-l-2 border-primary text-white -ml-px">
+<span class="material-symbols-outlined text-[16px] text-accent-blue">info</span>
+<span>SmartHome_v2.md</span>
+<span class="text-[10px] text-slate-500 ml-auto tracking-tighter">M</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-accent-yellow">javascript</span>
+<span>ECommerceAPI.js</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-accent-orange">html</span>
+<span>LandingPage.html</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-accent-purple">css</span>
+<span>DesignSystem.css</span>
+</div>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400 mt-1">
+<span class="material-symbols-outlined text-[16px] text-accent-yellow">javascript</span>
+<span>App.js</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-accent-purple">data_object</span>
+<span>config.json</span>
+</div>
+</div>
+<div class="px-2 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 text-slate-400 mt-1">
+<span class="material-symbols-outlined text-[16px] text-slate-500">chevron_right</span>
+<span class="material-symbols-outlined text-[18px] text-accent-green">folder</span>
+<span>public</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400 mt-2">
+<span class="material-symbols-outlined text-[16px] text-accent-red">code</span>
+<span>README.md</span>
+</div>
+<div class="px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-slate-800 text-slate-400">
+<span class="material-symbols-outlined text-[16px] text-slate-500">settings</span>
+<span>.gitignore</span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-2 border-t border-slate-700 bg-sidebar-bg">
+<div class="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 cursor-pointer p-1 rounded hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-[16px] text-accent-blue">check_circle</span>
+<span>Prettier: <span class="text-slate-300">On</span></span>
+</div>
+</div>
+</aside>
+<main class="flex-1 bg-editor-bg flex flex-col min-w-0 relative">
+<div class="flex bg-sidebar-bg border-b border-slate-700 overflow-x-auto no-scrollbar">
+<div class="flex items-center px-4 py-2 bg-editor-bg border-t-2 border-primary text-slate-200 min-w-fit cursor-pointer gap-2 text-sm border-r border-slate-700">
+<span class="material-symbols-outlined text-[16px] text-accent-blue">info</span>
+<span>SmartHome_v2.md</span>
+<span class="material-symbols-outlined text-[14px] hover:bg-slate-700 rounded p-0.5 ml-2 transition-colors">close</span>
+</div>
+<div class="flex items-center px-4 py-2 hover:bg-editor-bg/50 text-slate-500 min-w-fit cursor-pointer gap-2 text-sm border-r border-slate-700 border-t-2 border-transparent transition-colors group">
+<span class="material-symbols-outlined text-[16px] text-accent-yellow">javascript</span>
+<span>App.js</span>
+<span class="material-symbols-outlined text-[14px] hover:bg-slate-700 rounded p-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-all">close</span>
+</div>
+<div class="flex items-center px-4 py-2 hover:bg-editor-bg/50 text-slate-500 min-w-fit cursor-pointer gap-2 text-sm border-r border-slate-700 border-t-2 border-transparent transition-colors group">
+<span class="material-symbols-outlined text-[16px] text-accent-purple">css</span>
+<span>global.css</span>
+<span class="material-symbols-outlined text-[14px] hover:bg-slate-700 rounded p-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-all">close</span>
+</div>
+</div>
+<div class="flex items-center gap-1 px-4 py-1.5 text-xs text-slate-500 bg-editor-bg border-b border-slate-700/50 shadow-sm z-10">
+<span>src</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span>projects</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-slate-300">SmartHome_v2.md</span>
+<span class="ml-3 text-[10px] text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded border border-accent-blue/20">Markdown Preview</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 md:p-8 font-mono relative bg-editor-bg scroll-smooth">
+<div class="absolute top-0 left-0 bottom-0 w-12 bg-editor-bg border-r border-slate-700/30 text-right pr-3 pt-8 text-slate-600 text-sm select-none hidden md:block">
+<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+<div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div>
+<div>21</div><div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div><div>29</div><div>30</div>
+</div>
+<div class="md:pl-12 max-w-5xl mx-auto">
+<div class="mb-8 border-b border-slate-800 pb-6">
+<h1 class="text-3xl md:text-5xl font-bold text-slate-100 mb-4 font-display tracking-tight">
+<span class="text-accent-blue mr-2 opacity-60">#</span> SmartHome Dashboard
+                    </h1>
+<p class="text-slate-400 text-lg font-display max-w-2xl leading-relaxed">
+                        A comprehensive IoT dashboard for managing smart home devices with real-time data visualization and remote control capabilities.
+                    </p>
+</div>
+<div class="mb-10 rounded-xl overflow-hidden border border-slate-700/80 bg-slate-900 shadow-2xl relative group">
+<div class="w-full h-64 md:h-96 bg-gradient-to-br from-indigo-900 via-slate-900 to-black relative overflow-hidden" data-alt="Abstract smart home dashboard interface showing charts and controls in dark mode">
+<div class="absolute inset-0 p-8 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<div class="h-8 w-32 bg-slate-700/50 rounded-md backdrop-blur-sm"></div>
+<div class="flex gap-2">
+<div class="h-8 w-8 bg-slate-700/50 rounded-full backdrop-blur-sm"></div>
+<div class="h-8 w-8 bg-slate-700/50 rounded-full backdrop-blur-sm"></div>
+</div>
+</div>
+<div class="flex gap-6 h-full">
+<div class="w-16 hidden md:block h-full bg-slate-800/30 rounded-lg border border-slate-700/50 backdrop-blur-sm flex flex-col items-center py-4 gap-4">
+<div class="w-8 h-8 rounded bg-accent-blue/20"></div>
+<div class="w-8 h-8 rounded bg-slate-700/30"></div>
+<div class="w-8 h-8 rounded bg-slate-700/30"></div>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-slate-800/50 rounded-lg border border-slate-700/50 backdrop-blur-sm p-4 col-span-2 md:col-span-1">
+<div class="h-2 w-20 bg-accent-blue/40 rounded mb-2"></div>
+<div class="h-8 w-16 bg-accent-blue rounded mb-2 shadow-lg shadow-accent-blue/20"></div>
+<div class="h-2 w-full bg-slate-700 rounded mt-4 overflow-hidden">
+<div class="h-full w-2/3 bg-accent-blue rounded animate-pulse"></div>
+</div>
+</div>
+<div class="bg-slate-800/50 rounded-lg border border-slate-700/50 backdrop-blur-sm p-4">
+<div class="h-2 w-20 bg-accent-purple/40 rounded mb-2"></div>
+<div class="h-8 w-16 bg-accent-purple rounded mb-2 shadow-lg shadow-accent-purple/20"></div>
+<div class="h-16 w-full bg-slate-700/30 rounded mt-2 flex items-end gap-1 px-2 pb-1 justify-between">
+<div class="w-1/6 h-4 bg-accent-purple/60 rounded-sm"></div>
+<div class="w-1/6 h-8 bg-accent-purple/60 rounded-sm"></div>
+<div class="w-1/6 h-3 bg-accent-purple/60 rounded-sm"></div>
+<div class="w-1/6 h-10 bg-accent-purple/60 rounded-sm"></div>
+<div class="w-1/6 h-6 bg-accent-purple/60 rounded-sm"></div>
+</div>
+</div>
+<div class="bg-slate-800/50 rounded-lg border border-slate-700/50 backdrop-blur-sm p-4 hidden md:block">
+<div class="h-2 w-20 bg-accent-green/40 rounded mb-2"></div>
+<div class="flex justify-between items-center mt-6">
+<div class="h-12 w-12 rounded-full border-4 border-slate-700 border-t-accent-green transform -rotate-45"></div>
+<div class="h-2 w-10 bg-slate-600 rounded"></div>
+</div>
+</div>
+<div class="col-span-1 md:col-span-3 bg-slate-800/30 rounded-lg border border-slate-700/50 backdrop-blur-sm mt-auto h-24 p-4 flex items-center gap-4">
+<div class="h-12 w-12 bg-slate-700/50 rounded-md"></div>
+<div class="space-y-2 flex-1">
+<div class="h-2 w-1/3 bg-slate-700/50 rounded"></div>
+<div class="h-2 w-1/2 bg-slate-700/50 rounded"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 via-background-dark/20 to-transparent"></div>
+<div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+<div class="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-md text-xs text-slate-300 border border-white/10 font-mono">
+                                preview_v2.png <span class="text-slate-500 ml-2">1.2 MB</span>
+</div>
+<div class="flex gap-3">
+<button class="bg-slate-800/80 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all border border-slate-600/50 backdrop-blur-md">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+                                    Details
+                                </button>
+<button class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-900/30 hover:shadow-blue-900/50 transform hover:-translate-y-0.5">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                                    Live Demo
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<div class="mb-10">
+<div class="flex items-center gap-2 mb-4">
+<span class="text-slate-600 text-sm font-mono w-6 text-right select-none">12</span>
+<span class="text-accent-purple text-sm">&lt;</span><span class="text-accent-yellow font-bold text-lg font-mono">TechStack</span> <span class="text-accent-purple text-sm">/&gt;</span>
+</div>
+<div class="pl-8 sm:pl-10 grid grid-cols-2 sm:grid-cols-4 gap-4">
+<div class="bg-slate-800/30 border border-slate-700/70 p-4 rounded-lg hover:border-accent-blue/50 hover:bg-slate-800/60 transition-all group cursor-default">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-1.5 bg-slate-800 rounded-md group-hover:bg-blue-500/10 transition-colors">
+<span class="material-symbols-outlined text-accent-blue text-[20px] group-hover:scale-110 transition-transform">code</span>
+</div>
+<span class="text-slate-200 font-semibold text-sm">React.js</span>
+</div>
+<div class="text-xs text-slate-500">Frontend Framework</div>
+</div>
+<div class="bg-slate-800/30 border border-slate-700/70 p-4 rounded-lg hover:border-accent-green/50 hover:bg-slate-800/60 transition-all group cursor-default">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-1.5 bg-slate-800 rounded-md group-hover:bg-green-500/10 transition-colors">
+<span class="material-symbols-outlined text-accent-green text-[20px] group-hover:scale-110 transition-transform">wind_power</span>
+</div>
+<span class="text-slate-200 font-semibold text-sm">Tailwind</span>
+</div>
+<div class="text-xs text-slate-500">Utility-first CSS</div>
+</div>
+<div class="bg-slate-800/30 border border-slate-700/70 p-4 rounded-lg hover:border-accent-yellow/50 hover:bg-slate-800/60 transition-all group cursor-default">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-1.5 bg-slate-800 rounded-md group-hover:bg-yellow-500/10 transition-colors">
+<span class="material-symbols-outlined text-accent-yellow text-[20px] group-hover:scale-110 transition-transform">database</span>
+</div>
+<span class="text-slate-200 font-semibold text-sm">Firebase</span>
+</div>
+<div class="text-xs text-slate-500">Real-time DB</div>
+</div>
+<div class="bg-slate-800/30 border border-slate-700/70 p-4 rounded-lg hover:border-accent-purple/50 hover:bg-slate-800/60 transition-all group cursor-default">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-1.5 bg-slate-800 rounded-md group-hover:bg-purple-500/10 transition-colors">
+<span class="material-symbols-outlined text-accent-purple text-[20px] group-hover:scale-110 transition-transform">data_usage</span>
+</div>
+<span class="text-slate-200 font-semibold text-sm">Recharts</span>
+</div>
+<div class="text-xs text-slate-500">Data Visualization</div>
+</div>
+</div>
+</div>
+<div class="mb-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-slate-600 text-sm font-mono w-6 text-right select-none">24</span>
+<span class="text-accent-purple text-sm">&lt;</span><span class="text-accent-yellow font-bold text-lg font-mono">FeaturesList</span> <span class="text-accent-purple text-sm">&gt;</span>
+</div>
+<div class="pl-8 border-l-2 border-slate-800 ml-3 space-y-1">
+<div class="flex items-start gap-3 py-1 group">
+<span class="text-slate-600 text-sm mt-0.5 select-none w-6 text-right">25</span>
+<div class="font-mono text-sm sm:text-base">
+<span class="text-accent-blue">const</span>
+<span class="text-accent-yellow">keyFeatures</span>
+<span class="text-slate-300">=</span>
+<span class="text-accent-purple">[</span>
+</div>
+</div>
+<div class="pl-14 space-y-2 font-mono text-sm sm:text-base">
+<div class="flex flex-wrap gap-2 hover:bg-slate-800/50 p-1 rounded -ml-2 transition-colors">
+<span class="text-accent-green">"Real-time energy monitoring dashboard"</span><span class="text-slate-400">,</span>
+<span class="text-slate-600 text-xs sm:text-sm italic">// Websocket integration</span>
+</div>
+<div class="flex flex-wrap gap-2 hover:bg-slate-800/50 p-1 rounded -ml-2 transition-colors">
+<span class="text-accent-green">"Automated room climate control"</span><span class="text-slate-400">,</span>
+<span class="text-slate-600 text-xs sm:text-sm italic">// IoT sensors</span>
+</div>
+<div class="flex flex-wrap gap-2 hover:bg-slate-800/50 p-1 rounded -ml-2 transition-colors">
+<span class="text-accent-green">"Multi-user permission system"</span><span class="text-slate-400">,</span>
+<span class="text-slate-600 text-xs sm:text-sm italic">// RBAC</span>
+</div>
+<div class="flex flex-wrap gap-2 hover:bg-slate-800/50 p-1 rounded -ml-2 transition-colors">
+<span class="text-accent-green">"Mobile-responsive progressive web app"</span>
+</div>
+</div>
+<div class="flex items-center gap-3 py-1 mt-1">
+<span class="text-slate-600 text-sm select-none w-6 text-right">30</span>
+<div class="font-mono text-sm sm:text-base">
+<span class="text-accent-purple">]</span><span class="text-slate-300">;</span>
+</div>
+</div>
+<div class="flex items-center gap-3 mt-4">
+<span class="text-slate-600 text-sm select-none w-6 text-right">31</span>
+<div class="font-mono">
+<span class="text-accent-purple text-sm">&lt;/</span><span class="text-accent-yellow font-bold text-lg">FeaturesList</span> <span class="text-accent-purple text-sm">&gt;</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-16 pt-8 border-t border-slate-800">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-3 bg-slate-800/30 px-4 py-2 rounded-lg border border-slate-700/50">
+<div class="relative">
+<span class="w-2.5 h-2.5 rounded-full bg-green-500 block animate-pulse"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-green-500 block absolute top-0 left-0 animate-ping opacity-75"></span>
+</div>
+<div class="flex flex-col">
+<span class="text-slate-300 font-mono text-xs font-bold">main branch</span>
+<span class="text-slate-500 font-mono text-xs">Latest commit: <span class="text-slate-300">2 days ago</span></span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="group flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-lg border border-slate-600 hover:border-slate-500 transition-all">
+<span class="material-symbols-outlined text-[18px] group-hover:text-accent-blue transition-colors">code</span>
+<span class="font-mono text-sm font-medium">Source</span>
+</button>
+<button class="group flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-0.5">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+<span class="font-mono text-sm font-bold">Deploy</span>
+</button>
+</div>
+</div>
+<div class="mt-8 bg-black/80 rounded-lg p-5 font-mono text-xs md:text-sm text-slate-300 border border-slate-800 shadow-xl backdrop-blur-sm">
+<div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-slate-500">terminal</span>
+<span class="text-slate-500 uppercase font-bold text-[10px] tracking-wider">Terminal</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors"></div>
+</div>
+</div>
+<div class="space-y-1.5 font-mono">
+<p><span class="text-accent-green">➜</span> <span class="text-accent-blue">~</span> <span class="text-slate-400">cd projects/smart-home-dashboard</span></p>
+<p><span class="text-accent-green">➜</span> <span class="text-accent-blue">smart-home-dashboard</span> <span class="text-slate-400">git status</span></p>
+<p class="text-slate-500 pl-4">On branch main</p>
+<p class="text-slate-500 pl-4">Your branch is up to date with 'origin/main'.</p>
+<p class="text-slate-400 mt-2 pl-4 italic">nothing to commit, working tree clean</p>
+<div class="flex items-center gap-2 mt-3 pt-2 border-t border-slate-900/50">
+<span class="text-accent-green">➜</span>
+<span class="text-accent-blue">smart-home-dashboard</span>
+<div class="w-2 h-4 bg-slate-400 animate-pulse"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-24"></div>
+</div>
+</div>
+<footer class="bg-primary text-white text-[11px] py-1 px-3 flex justify-between items-center select-none font-mono tracking-wide shrink-0 border-t border-blue-600 shadow-inner z-20">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[14px]">source</span>
+<span class="font-bold">main*</span>
+</div>
+<div class="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+<span>0</span>
+<span class="material-symbols-outlined text-[12px]">arrow_upward</span>
+<span>0</span>
+<span class="material-symbols-outlined text-[12px]">arrow_downward</span>
+</div>
+<div class="hidden sm:flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[14px]">cancel</span>
+<span>0</span>
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>0</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span>Ln 12, Col 34</span>
+</div>
+<div class="hidden sm:flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span>UTF-8</span>
+</div>
+<div class="hidden sm:flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span>Javascript</span>
+</div>
+<div class="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[14px]">notifications</span>
+<span class="font-bold">Prettier</span>
+</div>
+</div>
+</footer>
+</main>
+</div>
+
+</body></html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alex Chen - Portfolio IDE</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "editor-bg": "#0d1117",
+                        "sidebar-bg": "#161b22",
+                        "activity-bar-bg": "#0d1117",
+                        "panel-bg": "#010409",
+                        "border-color": "#30363d",
+                        "syntax-keyword": "#ff7b72",
+                        "syntax-func": "#d2a8ff",
+                        "syntax-string": "#a5d6ff",
+                        "syntax-var": "#79c0ff",
+                        "syntax-comment": "#8b949e",
+                        "syntax-obj": "#7ee787",
+                        "syntax-class": "#f0883e",
+                        "tab-active-bg": "#161b22",
+                        "tab-inactive-bg": "#010409",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .blink-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #161b22; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d; 
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58; 
+        }
+        .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; color: #e6edf3; }
+        .markdown-content h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; color: #e6edf3; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
+        .markdown-content p { margin-bottom: 1rem; line-height: 1.6; color: #c9d1d9; }
+        .markdown-content a { color: #58a6ff; text-decoration: none; }
+        .markdown-content a:hover { text-decoration: underline; }
+        .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #c9d1d9; }
+        .markdown-content li { margin-bottom: 0.25rem; }
+        .markdown-content code { background-color: rgba(110, 118, 129, 0.4); padding: 0.2em 0.4em; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 85%; }
+        .markdown-content pre { background-color: #161b22; padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
+        .markdown-content pre code { background-color: transparent; padding: 0; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display overflow-hidden h-screen flex flex-col">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-border-color bg-sidebar-bg px-4 py-2 shrink-0 select-none z-30">
+<div class="flex items-center gap-3">
+<div class="size-6 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">terminal</span>
+</div>
+<div class="flex items-center text-xs text-slate-400 ml-2">
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">File</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Edit</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Selection</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">View</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Go</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Run</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Terminal</div>
+<div class="px-3 py-1 hover:bg-slate-700/50 rounded cursor-pointer">Help</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-xs text-slate-500 font-mono hidden md:block">alex-chen-portfolio [SSH: remote]</div>
+<div class="flex gap-2 ml-4">
+<div class="size-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 cursor-pointer"></div>
+<div class="size-3 rounded-full bg-green-500/80 hover:bg-green-500 cursor-pointer"></div>
+<div class="size-3 rounded-full bg-red-500/80 hover:bg-red-500 cursor-pointer"></div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-12 flex flex-col items-center py-4 bg-activity-bar-bg border-r border-border-color shrink-0 z-20">
+<div class="flex flex-col gap-4">
+<button class="text-slate-100 border-l-2 border-primary w-full flex justify-center relative group py-2">
+<span class="material-symbols-outlined text-[24px] opacity-100">folder_open</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors relative group py-2">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
+<span class="material-symbols-outlined text-[24px]">source_environment</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
+<span class="material-symbols-outlined text-[24px]">bug_report</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
+<span class="material-symbols-outlined text-[24px]">extension</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col gap-4 mb-2">
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+</button>
+<button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</aside>
+<aside class="w-64 flex flex-col bg-sidebar-bg border-r border-border-color shrink-0 hidden md:flex">
+<div class="px-4 py-2.5 text-xs font-medium text-slate-400 uppercase tracking-wider flex justify-between items-center group cursor-pointer hover:text-slate-200">
+<span>Explorer</span>
+<span class="material-symbols-outlined text-base opacity-0 group-hover:opacity-100">more_horiz</span>
+</div>
+<div class="flex-1 overflow-y-auto">
+<div class="px-0 py-0">
+<div class="flex items-center px-1 py-1 text-slate-300 cursor-pointer hover:bg-slate-800">
+<span class="material-symbols-outlined text-base mr-1 rotate-90">chevron_right</span>
+<span class="text-xs font-bold uppercase tracking-wider">Open Editors</span>
+</div>
+<div class="flex flex-col text-sm pl-0">
+<div class="flex items-center gap-2 px-6 py-1 bg-slate-800/50 text-slate-200 cursor-pointer border-l-2 border-primary">
+<span class="material-symbols-outlined text-base text-slate-400">info</span>
+<span class="truncate">README.md</span>
+<span class="ml-auto text-xs text-slate-500">M</span>
+</div>
+</div>
+</div>
+<div class="mt-2">
+<div class="flex items-center px-1 py-1 text-slate-300 cursor-pointer hover:bg-slate-800">
+<span class="material-symbols-outlined text-base mr-1 rotate-90">chevron_right</span>
+<span class="text-xs font-bold uppercase tracking-wider">ALEX-PORTFOLIO</span>
+</div>
+<div class="flex flex-col text-sm font-light text-slate-400">
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-slate-500">folder</span>
+<span>.github</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-slate-500">folder</span>
+<span>components</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-slate-500">folder</span>
+<span>pages</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-slate-500">folder</span>
+<span>styles</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-yellow-500">javascript</span>
+<span>app.js</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-orange-500">html</span>
+<span>index.html</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-blue-400">css</span>
+<span>main.css</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 bg-slate-800 text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-slate-400">info</span>
+<span>README.md</span>
+</div>
+<div class="group flex items-center gap-1.5 px-5 py-1 hover:bg-slate-800 hover:text-slate-200 cursor-pointer">
+<span class="material-symbols-outlined text-base text-purple-400">description</span>
+<span>resume.pdf</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col bg-editor-bg relative min-w-0">
+<div class="flex bg-activity-bar-bg border-b border-border-color overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-2 px-3 py-2 bg-editor-bg border-t-2 border-primary min-w-fit cursor-pointer text-slate-200 text-sm">
+<span class="material-symbols-outlined text-sm text-slate-400">info</span>
+<span>README.md</span>
+<span class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2">close</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 border-r border-border-color min-w-fit cursor-pointer text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 text-sm border-t-2 border-transparent">
+<span class="material-symbols-outlined text-sm text-yellow-500">javascript</span>
+<span>app.js</span>
+<span class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2 opacity-0 group-hover:opacity-100">close</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 border-r border-border-color min-w-fit cursor-pointer text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 text-sm border-t-2 border-transparent">
+<span class="material-symbols-outlined text-sm text-orange-500">html</span>
+<span>index.html</span>
+</div>
+</div>
+<div class="flex items-center gap-1 px-4 py-1 text-xs text-slate-500 bg-editor-bg border-b border-border-color/50">
+<span>alex-portfolio</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span>README.md</span>
+</div>
+<div class="flex-1 overflow-y-auto relative">
+<div class="flex min-h-full">
+<div class="w-12 flex flex-col items-end pr-4 py-4 text-slate-600 font-mono text-sm select-none bg-editor-bg shrink-0">
+<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div><div>25</div>
+</div>
+<div class="flex-1 px-4 py-4 max-w-4xl">
+<div class="markdown-content font-sans">
+<h1 class="flex items-center gap-3">
+<span class="text-primary font-mono text-4xl">Hi, I'm Alex Chen</span>
+<span class="material-symbols-outlined text-3xl text-yellow-400 animate-pulse">waving_hand</span>
+</h1>
+<p class="text-xl text-slate-300 mt-4">
+                                Creative Developer &amp; UI/UX Designer specialized in building exceptional digital experiences.
+                            </p>
+<div class="flex flex-wrap gap-2 my-6">
+<span class="px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-xs font-mono">React</span>
+<span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded text-xs font-mono">JavaScript</span>
+<span class="px-2 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded text-xs font-mono">Tailwind</span>
+<span class="px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-xs font-mono">Node.js</span>
+<span class="px-2 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded text-xs font-mono">Figma</span>
+</div>
+<h2>🚀 About Me</h2>
+<p>
+                                I'm a passionate developer with a knack for turning complex problems into simple, beautiful, and intuitive designs. Currently building the future of web applications.
+                            </p>
+<ul class="list-none pl-0 space-y-2 mt-4 font-mono text-sm text-slate-400">
+<li class="flex items-center gap-2">
+<span class="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+<span>Based in San Francisco, CA</span>
+</li>
+<li class="flex items-center gap-2">
+<span class="material-symbols-outlined text-blue-400 text-sm">work</span>
+<span>Senior Frontend Engineer at TechCorp</span>
+</li>
+<li class="flex items-center gap-2">
+<span class="material-symbols-outlined text-purple-400 text-sm">school</span>
+<span>MS Computer Science, Stanford</span>
+</li>
+</ul>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+<div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
+<div class="flex items-center justify-between mb-2">
+<span class="text-blue-400 font-mono text-sm">latest-project</span>
+<span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
+</div>
+<h3 class="text-slate-200 font-medium mb-1">E-Commerce Dashboard</h3>
+<p class="text-slate-400 text-sm">A full-stack analytics dashboard for online retailers featuring real-time data visualization.</p>
+</div>
+<div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
+<div class="flex items-center justify-between mb-2">
+<span class="text-green-400 font-mono text-sm">open-source</span>
+<span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
+</div>
+<h3 class="text-slate-200 font-medium mb-1">React-Grid-System</h3>
+<p class="text-slate-400 text-sm">Lightweight responsive grid component library downloaded 10k+ times on NPM.</p>
+</div>
+</div>
+<h2>📫 Connect</h2>
+<p>
+                                Feel free to reach out for collaborations or just a friendly hello.
+                            </p>
+<div class="flex gap-4 mt-4 font-mono text-sm">
+<a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-base">mail</span>
+                                    hello@alexchen.dev
+                                </a>
+<a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-base">link</span>
+                                    github.com/alex
+                                </a>
+<a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-base">group</span>
+                                    linkedin.com/in/alex
+                                </a>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute right-0 top-0 bottom-0 w-3 bg-transparent hover:bg-white/5 z-10 hidden md:block">
+<div class="w-full bg-slate-600/30 h-16 mt-12 rounded-full"></div>
+</div>
+</div>
+</main>
+</div>
+<footer class="h-6 bg-primary flex items-center justify-between px-3 text-[11px] text-white font-medium select-none shrink-0 z-30">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-xs">code</span>
+<span>main*</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-xs">sync</span>
+<span>0</span>
+<span class="material-symbols-outlined text-xs">arrow_upward</span>
+<span>1</span>
+<span class="material-symbols-outlined text-xs">arrow_downward</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-xs">error</span>
+<span>0</span>
+<span class="material-symbols-outlined text-xs">warning</span>
+<span>0</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer hidden md:flex">
+<span>Ln 1, Col 1</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer hidden md:flex">
+<span>Spaces: 4</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span>UTF-8</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-xs">javascript</span>
+<span>Markdown</span>
+</div>
+<div class="flex items-center gap-1 hover:bg-white/20 px-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-xs">notifications</span>
+</div>
+</div>
+</footer>
+</body></html>
