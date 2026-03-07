@@ -1,22 +1,23 @@
 <template>
   <main class="flex-1 flex flex-col bg-editor-bg relative min-w-0">
-    <div class="flex bg-activity-bar-bg border-b border-border-color overflow-x-auto no-scrollbar">
+    <div ref="tabsContainer" class="flex bg-activity-bar-bg border-b border-border-color overflow-x-auto no-scrollbar">
       <div 
         v-for="(file, index) in openFiles" 
         :key="file.id"
-        class="group flex items-center gap-2 px-3 py-2 min-w-fit cursor-pointer text-sm border-t-2"
-        :class="activeFileId === file.id ? 'bg-editor-bg border-primary text-slate-200' : 'border-r border-border-color text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 border-transparent'"
-        @click="openFile(file)"
-        draggable="true"
-        @dragstart="onDragStart($event, index)"
-        @dragover.prevent
-        @drop="onDrop($event, index)"
+        class="group select-none flex items-center gap-2 px-3 py-2 min-w-fit text-sm border-t-2 relative"
+        :class="[
+          activeFileId === file.id ? 'bg-editor-bg border-primary text-slate-200' : 'border-r border-border-color text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 border-transparent',
+          draggingIndex === index ? 'z-50 shadow-lg cursor-grabbing transition-none' : 'transition-transform duration-200 cursor-pointer'
+        ]"
+        :style="draggingIndex === index ? { transform: `translateX(${dragOffset}px)` } : {}"
+        @mousedown="onMouseDown($event, file as any, index)"
       >
-        <span class="material-symbols-outlined text-sm" :class="file.iconColorClass || 'text-slate-400'">{{ file.icon }}</span>
-        <span>{{ file.name }}</span>
+        <span class="material-symbols-outlined text-sm pointer-events-none" :class="file.iconColorClass || 'text-slate-400'">{{ file.icon }}</span>
+        <span class="pointer-events-none">{{ file.name }}</span>
         <span 
-          class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2 transition-opacity" 
+          class="close-btn material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2 transition-opacity cursor-pointer z-10" 
           :class="activeFileId === file.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+          @mousedown.stop
           @click.stop="closeFile(file.id)"
         >
           close
@@ -154,29 +155,101 @@
 </template>
 
 <script setup lang="ts">
+import { ref, nextTick, onBeforeUnmount } from 'vue'
 import { useIDEState } from '../../../composables/useIDEState'
 
 const { openFiles, activeFileId, openFile, closeFile, reorderFiles } = useIDEState()
 
-const onDragStart = (event: DragEvent, index: number) => {
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.dropEffect = 'move'
-    event.dataTransfer.setData('tab/index', index.toString())
-  }
+const tabsContainer = ref<HTMLElement | null>(null)
+const draggingIndex = ref<number | null>(null)
+const startX = ref(0)
+const dragOffset = ref(0)
+let isAnimatingSwap = false
+
+const onMouseDown = (e: MouseEvent, file: any, index: number) => {
+  if (e.button !== 0) return // Only left click
+  if ((e.target as HTMLElement).closest('.close-btn')) return
+  
+  openFile(file)
+  
+  draggingIndex.value = index
+  startX.value = e.clientX
+  dragOffset.value = 0
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
 }
 
-const onDrop = (event: DragEvent, toIndex: number) => {
-  if (event.dataTransfer) {
-    const fromIndexStr = event.dataTransfer.getData('tab/index')
-    if (fromIndexStr) {
-      const fromIndex = parseInt(fromIndexStr, 10)
-      if (fromIndex !== toIndex) {
-        reorderFiles(fromIndex, toIndex)
-      }
+const onMouseMove = async (e: MouseEvent) => {
+  if (draggingIndex.value === null || isAnimatingSwap) return
+  
+  dragOffset.value = e.clientX - startX.value
+  
+  if (!tabsContainer.value) return
+  
+  const tabs = Array.from(tabsContainer.value.children) as HTMLElement[]
+  const draggingTab = tabs[draggingIndex.value]
+  if (!draggingTab) return
+  
+  const draggingRect = draggingTab.getBoundingClientRect()
+  const draggingCenter = draggingRect.left + draggingRect.width / 2
+  
+  if (dragOffset.value > 0 && draggingIndex.value < tabs.length - 1) {
+    const nextTab = tabs[draggingIndex.value + 1]
+    if (!nextTab) return
+    const nextRect = nextTab.getBoundingClientRect()
+    const nextCenter = nextRect.left + nextRect.width / 2
+    
+    if (draggingCenter > nextCenter) {
+      isAnimatingSwap = true
+      const oldIndex = draggingIndex.value
+      const newIndex = oldIndex + 1
+      
+      reorderFiles(oldIndex, newIndex)
+      
+      startX.value += nextRect.width
+      dragOffset.value = e.clientX - startX.value
+      draggingIndex.value = newIndex
+      
+      await nextTick()
+      isAnimatingSwap = false
+    }
+  } else if (dragOffset.value < 0 && draggingIndex.value > 0) {
+    const prevTab = tabs[draggingIndex.value - 1]
+    if (!prevTab) return
+    const prevRect = prevTab.getBoundingClientRect()
+    const prevCenter = prevRect.left + prevRect.width / 2
+    
+    if (draggingCenter < prevCenter) {
+      isAnimatingSwap = true
+      const oldIndex = draggingIndex.value
+      const newIndex = oldIndex - 1
+      
+      reorderFiles(oldIndex, newIndex)
+      
+      startX.value -= prevRect.width
+      dragOffset.value = e.clientX - startX.value
+      draggingIndex.value = newIndex
+      
+      await nextTick()
+      isAnimatingSwap = false
     }
   }
 }
+
+const onMouseUp = () => {
+  if (draggingIndex.value !== null) {
+    draggingIndex.value = null
+    dragOffset.value = 0
+  }
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', onMouseUp)
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', onMouseUp)
+})
 </script>
 
 <style scoped>
