@@ -1,26 +1,33 @@
 <template>
   <main class="flex-1 flex flex-col bg-editor-bg relative min-w-0">
     <div class="flex bg-activity-bar-bg border-b border-border-color overflow-x-auto no-scrollbar">
-      <div class="flex items-center gap-2 px-3 py-2 bg-editor-bg border-t-2 border-primary min-w-fit cursor-pointer text-slate-200 text-sm">
-        <span class="material-symbols-outlined text-sm text-slate-400">info</span>
-        <span>README.md</span>
-        <span class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2">close</span>
-      </div>
-      <div class="group flex items-center gap-2 px-3 py-2 border-r border-border-color min-w-fit cursor-pointer text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 text-sm border-t-2 border-transparent">
-        <span class="material-symbols-outlined text-sm text-yellow-500">javascript</span>
-        <span>app.js</span>
-        <span class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2 opacity-0 group-hover:opacity-100">close</span>
-      </div>
-      <div class="flex items-center gap-2 px-3 py-2 border-r border-border-color min-w-fit cursor-pointer text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 text-sm border-t-2 border-transparent">
-        <span class="material-symbols-outlined text-sm text-orange-500">html</span>
-        <span>index.html</span>
+      <div 
+        v-for="(file, index) in openFiles" 
+        :key="file.id"
+        class="group flex items-center gap-2 px-3 py-2 min-w-fit cursor-pointer text-sm border-t-2"
+        :class="activeFileId === file.id ? 'bg-editor-bg border-primary text-slate-200' : 'border-r border-border-color text-slate-500 hover:bg-sidebar-bg hover:text-slate-300 border-transparent'"
+        @click="openFile(file)"
+        draggable="true"
+        @dragstart="onDragStart($event, index)"
+        @dragover.prevent
+        @drop="onDrop($event, index)"
+      >
+        <span class="material-symbols-outlined text-sm" :class="file.iconColorClass || 'text-slate-400'">{{ file.icon }}</span>
+        <span>{{ file.name }}</span>
+        <span 
+          class="material-symbols-outlined text-sm hover:bg-slate-700 rounded p-0.5 ml-2 transition-opacity" 
+          :class="activeFileId === file.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+          @click.stop="closeFile(file.id)"
+        >
+          close
+        </span>
       </div>
     </div>
     
     <div class="flex items-center gap-1 px-4 py-1 text-xs text-slate-500 bg-editor-bg border-b border-border-color/50">
       <span>alex-portfolio</span>
       <span class="material-symbols-outlined text-sm">chevron_right</span>
-      <span>README.md</span>
+      <span>{{ activeFileId }}</span>
     </div>
     
     <div class="flex-1 overflow-y-auto relative">
@@ -32,82 +39,109 @@
         
         <div class="flex-1 px-4 py-4 max-w-4xl">
           <div class="markdown-content font-sans">
-            <h1 class="flex items-center gap-3">
-              <span class="text-primary font-mono text-4xl">Hi, I'm Alex Chen</span>
-              <span class="material-symbols-outlined text-3xl text-yellow-400 animate-pulse">waving_hand</span>
-            </h1>
-            
-            <p class="text-xl text-slate-300 mt-4">
-              Creative Developer & UI/UX Designer specialized in building exceptional digital experiences.
-            </p>
-            
-            <div class="flex flex-wrap gap-2 my-6">
-              <span class="px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-xs font-mono">React</span>
-              <span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded text-xs font-mono">JavaScript</span>
-              <span class="px-2 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded text-xs font-mono">Tailwind</span>
-              <span class="px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-xs font-mono">Node.js</span>
-              <span class="px-2 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded text-xs font-mono">Figma</span>
-            </div>
-            
-            <h2>🚀 About Me</h2>
-            <p>
-              I'm a passionate developer with a knack for turning complex problems into simple, beautiful, and intuitive designs. Currently building the future of web applications.
-            </p>
-            
-            <ul class="list-none pl-0 space-y-2 mt-4 font-mono text-sm text-slate-400">
-              <li class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                <span>Based in San Francisco, CA</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-blue-400 text-sm">work</span>
-                <span>Senior Frontend Engineer at TechCorp</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-purple-400 text-sm">school</span>
-                <span>MS Computer Science, Stanford</span>
-              </li>
-            </ul>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-              <div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-blue-400 font-mono text-sm">latest-project</span>
-                  <span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
-                </div>
-                <h3 class="text-slate-200 font-medium mb-1">E-Commerce Dashboard</h3>
-                <p class="text-slate-400 text-sm">A full-stack analytics dashboard for online retailers featuring real-time data visualization.</p>
+            <template v-if="activeFileId === 'README.md'">
+              <h1 class="flex items-center gap-3">
+                <span class="text-primary font-mono text-4xl">Hi, I'm Alex Chen</span>
+                <span class="material-symbols-outlined text-3xl text-yellow-400 animate-pulse">waving_hand</span>
+              </h1>
+              
+              <p class="text-xl text-slate-300 mt-4">
+                Creative Developer & UI/UX Designer specialized in building exceptional digital experiences.
+              </p>
+              
+              <div class="flex flex-wrap gap-2 my-6">
+                <span class="px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-xs font-mono">React</span>
+                <span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded text-xs font-mono">JavaScript</span>
+                <span class="px-2 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded text-xs font-mono">Tailwind</span>
+                <span class="px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-xs font-mono">Node.js</span>
+                <span class="px-2 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded text-xs font-mono">Figma</span>
               </div>
               
-              <div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-green-400 font-mono text-sm">open-source</span>
-                  <span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
+              <h2>🚀 About Me</h2>
+              <p>
+                I'm a passionate developer with a knack for turning complex problems into simple, beautiful, and intuitive designs. Currently building the future of web applications.
+              </p>
+              
+              <ul class="list-none pl-0 space-y-2 mt-4 font-mono text-sm text-slate-400">
+                <li class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                  <span>Based in San Francisco, CA</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-blue-400 text-sm">work</span>
+                  <span>Senior Frontend Engineer at TechCorp</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-purple-400 text-sm">school</span>
+                  <span>MS Computer Science, Stanford</span>
+                </li>
+              </ul>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-blue-400 font-mono text-sm">latest-project</span>
+                    <span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
+                  </div>
+                  <h3 class="text-slate-200 font-medium mb-1">E-Commerce Dashboard</h3>
+                  <p class="text-slate-400 text-sm">A full-stack analytics dashboard for online retailers featuring real-time data visualization.</p>
                 </div>
-                <h3 class="text-slate-200 font-medium mb-1">React-Grid-System</h3>
-                <p class="text-slate-400 text-sm">Lightweight responsive grid component library downloaded 10k+ times on NPM.</p>
+                
+                <div class="bg-sidebar-bg border border-border-color rounded-lg p-4 hover:border-slate-500 transition-colors cursor-pointer group">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-green-400 font-mono text-sm">open-source</span>
+                    <span class="material-symbols-outlined text-slate-500 group-hover:text-white transition-colors">arrow_outward</span>
+                  </div>
+                  <h3 class="text-slate-200 font-medium mb-1">React-Grid-System</h3>
+                  <p class="text-slate-400 text-sm">Lightweight responsive grid component library downloaded 10k+ times on NPM.</p>
+                </div>
               </div>
-            </div>
-            
-            <h2>📫 Connect</h2>
-            <p>
-              Feel free to reach out for collaborations or just a friendly hello.
-            </p>
-            
-            <div class="flex gap-4 mt-4 font-mono text-sm">
-              <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
-                <span class="material-symbols-outlined text-base">mail</span>
-                hello@alexchen.dev
-              </a>
-              <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
-                <span class="material-symbols-outlined text-base">link</span>
-                github.com/alex
-              </a>
-              <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
-                <span class="material-symbols-outlined text-base">group</span>
-                linkedin.com/in/alex
-              </a>
-            </div>
+              
+              <h2>📫 Connect</h2>
+              <p>
+                Feel free to reach out for collaborations or just a friendly hello.
+              </p>
+              
+              <div class="flex gap-4 mt-4 font-mono text-sm">
+                <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+                  <span class="material-symbols-outlined text-base">mail</span>
+                  hello@alexchen.dev
+                </a>
+                <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+                  <span class="material-symbols-outlined text-base">link</span>
+                  github.com/alex
+                </a>
+                <a class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" href="#">
+                  <span class="material-symbols-outlined text-base">group</span>
+                  linkedin.com/in/alex
+                </a>
+              </div>
+            </template>
+            <template v-else-if="activeFileId === 'resume.pdf'">
+              <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <span class="material-symbols-outlined text-6xl mb-4 opacity-50">picture_as_pdf</span>
+                <p>Loading PDF viewer for {{ activeFileId }}...</p>
+              </div>
+            </template>
+            <template v-else-if="activeFileId">
+              <div class="flex flex-col py-10 text-slate-400">
+                <p class="font-mono text-sm opacity-50 mb-2">// Contents of {{ activeFileId }}</p>
+                <p>Coming soon...</p>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex flex-col items-center justify-center py-32 text-slate-500 h-full">
+                <span class="material-symbols-outlined text-6xl mb-6 opacity-20">code</span>
+                <p class="text-xl font-light tracking-wide opacity-50">Select a file from the explorer to view it</p>
+                
+                <div class="grid grid-cols-2 gap-x-12 gap-y-4 mt-12 text-sm font-mono opacity-40">
+                  <div class="flex justify-between w-48"><span class="mr-4">Show All Commands</span><span>Ctrl+Shift+P</span></div>
+                  <div class="flex justify-between w-48"><span class="mr-4">Go to File</span><span>Ctrl+P</span></div>
+                  <div class="flex justify-between w-48"><span class="mr-4">Find in Files</span><span>Ctrl+Shift+F</span></div>
+                  <div class="flex justify-between w-48"><span class="mr-4">Toggle Terminal</span><span>Ctrl+`</span></div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -120,6 +154,29 @@
 </template>
 
 <script setup lang="ts">
+import { useIDEState } from '../../../composables/useIDEState'
+
+const { openFiles, activeFileId, openFile, closeFile, reorderFiles } = useIDEState()
+
+const onDragStart = (event: DragEvent, index: number) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.setData('tab/index', index.toString())
+  }
+}
+
+const onDrop = (event: DragEvent, toIndex: number) => {
+  if (event.dataTransfer) {
+    const fromIndexStr = event.dataTransfer.getData('tab/index')
+    if (fromIndexStr) {
+      const fromIndex = parseInt(fromIndexStr, 10)
+      if (fromIndex !== toIndex) {
+        reorderFiles(fromIndex, toIndex)
+      }
+    }
+  }
+}
 </script>
 
 <style scoped>
