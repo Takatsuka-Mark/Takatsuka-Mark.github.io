@@ -9,26 +9,6 @@
       <button class="text-slate-100 border-l-2 border-primary w-full flex justify-center relative group py-2">
         <span class="material-symbols-outlined text-[24px] opacity-100">folder_open</span>
       </button>
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors relative group py-2">
-        <span class="material-symbols-outlined text-[24px]">search</span>
-      </button>
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
-        <span class="material-symbols-outlined text-[24px]">source_environment</span>
-      </button>
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
-        <span class="material-symbols-outlined text-[24px]">bug_report</span>
-      </button>
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
-        <span class="material-symbols-outlined text-[24px]">extension</span>
-      </button>
-    </div>
-    <div class="mt-auto flex flex-col gap-4 mb-2">
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
-        <span class="material-symbols-outlined text-[24px]">account_circle</span>
-      </button>
-      <button class="text-slate-500 hover:text-slate-300 w-full flex justify-center transition-colors py-2">
-        <span class="material-symbols-outlined text-[24px]">settings</span>
-      </button>
     </div>
   </aside>
 </template>
